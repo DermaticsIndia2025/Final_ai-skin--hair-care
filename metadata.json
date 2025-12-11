@@ -1,0 +1,7 @@
+{
+  "name": "git Copy of AI Skin & Hair Care",
+  "description": "A conversational AI assistant that provides personalized skin and hair care analysis, goal setting, and product recommendations based on user input and photo analysis.",
+  "requestFramePermissions": [
+    "camera"
+  ]
+}
