@@ -314,20 +314,45 @@ const femaleHairQuestions: HairQuestion[] = [
     }
 ];
 
-const mockGoals: Goal[] = [
-    { id: 'suggestion-acne', text: 'Clear Acne & Breakouts', icon: <GoalAcneIcon/>, isSuggestion: true },
-    { id: 'suggestion-oil', text: 'Control Oil & Shine', icon: <GoalOilIcon/>, isSuggestion: true },
-    { id: 'suggestion-texture', text: 'Refine Skin Texture', icon: <GoalTextureIcon/>, isSuggestion: true },
-    { id: 'suggestion-pores', text: 'Minimize Pore Appearance', icon: <GoalPoresIcon/>, isSuggestion: true },
-    { id: 'tone', text: 'Even Skin tone & Brighten', icon: <GoalToneIcon/> },
-    { id: 'hydration', text: 'Boost Hydration', icon: <GoalHydrationIcon/> },
-    { id: 'aging', text: 'Reduce Fine Lines & Wrinkles', icon: <GoalAgingIcon/> },
-    { id: 'firmness', text: 'Improve Firmness & Elasticity', icon: <GoalBarrierIcon/> },
-    { id: 'redness', text: 'Soothe Redness & Irritation', icon: <GoalRednessIcon/> },
-    { id: 'barrier', text: 'Strengthen Skin Barrier', icon: <GoalBarrierIcon/> },
-    { id: 'healthy', text: 'Maintain Healthy Skin', icon: <GoalHealthyIcon/> },
-    { id: 'none', text: 'None of these', icon: <GoalNoneIcon/> },
+const allGoals: Goal[] = [
+    { id: 'suggestion-acne', text: 'Clear Acne & Breakouts', icon: <GoalAcneIcon/>, isSuggestion: false },
+    { id: 'suggestion-oil', text: 'Control Oil & Shine', icon: <GoalOilIcon/>, isSuggestion: false },
+    { id: 'suggestion-texture', text: 'Refine Skin Texture', icon: <GoalTextureIcon/>, isSuggestion: false },
+    { id: 'suggestion-pores', text: 'Minimize Pore Appearance', icon: <GoalPoresIcon/>, isSuggestion: false },
+    { id: 'tone', text: 'Even Skin tone & Brighten', icon: <GoalToneIcon/>, isSuggestion: false },
+    { id: 'hydration', text: 'Boost Hydration', icon: <GoalHydrationIcon/>, isSuggestion: false },
+    { id: 'aging', text: 'Reduce Fine Lines & Wrinkles', icon: <GoalAgingIcon/>, isSuggestion: false },
+    { id: 'firmness', text: 'Improve Firmness & Elasticity', icon: <GoalBarrierIcon/>, isSuggestion: false },
+    { id: 'redness', text: 'Soothe Redness & Irritation', icon: <GoalRednessIcon/>, isSuggestion: false },
+    { id: 'barrier', text: 'Strengthen Skin Barrier', icon: <GoalBarrierIcon/>, isSuggestion: false },
+    { id: 'healthy', text: 'Maintain Healthy Skin', icon: <GoalHealthyIcon/>, isSuggestion: false },
+    { id: 'none', text: 'None of these', icon: <GoalNoneIcon/>, isSuggestion: false },
 ];
+
+const getDynamicSuggestions = (analysis: SkinConditionCategory[]): Goal[] => {
+    const suggestions: Goal[] = [];
+    const analysisText = analysis.flatMap(cat => cat.conditions.flatMap(c => c.name.toLowerCase())).join(' ');
+
+    const suggestionMap = [
+        { keywords: ['acne', 'pustule', 'comedone', 'pimple', 'breakout'], goal: allGoals.find(g => g.id === 'suggestion-acne') },
+        { keywords: ['oil', 'oily', 'sebum', 'shine'], goal: allGoals.find(g => g.id === 'suggestion-oil') },
+        { keywords: ['texture', 'rough', 'bumpy'], goal: allGoals.find(g => g.id === 'suggestion-texture') },
+        { keywords: ['pore', 'enlarged'], goal: allGoals.find(g => g.id === 'suggestion-pores') },
+        { keywords: ['spot', 'pigmentation', 'dark', 'tone', 'uneven'], goal: allGoals.find(g => g.id === 'tone') },
+        { keywords: ['dry', 'hydration', 'dehydration'], goal: allGoals.find(g => g.id === 'hydration') },
+        { keywords: ['wrinkle', 'line', 'aging', 'crow', 'fine line'], goal: allGoals.find(g => g.id === 'aging') },
+        { keywords: ['firmness', 'sagging'], goal: allGoals.find(g => g.id === 'firmness') },
+        { keywords: ['redness', 'irritation', 'rosacea', 'inflamed'], goal: allGoals.find(g => g.id === 'redness') },
+    ];
+
+    suggestionMap.forEach(({ keywords, goal }) => {
+        if (goal && keywords.some(kw => analysisText.includes(kw))) {
+            suggestions.push({ ...goal, isSuggestion: true });
+        }
+    });
+
+    return suggestions.length > 0 ? suggestions : [allGoals.find(g => g.id === 'healthy')!];
+};
 
 type UploadedImage = { name: string; url: string; base64: string; };
 
@@ -593,7 +618,7 @@ const CartView: React.FC<{
                         </div>
                     ) : (
                         items.map((item, idx) => (
-                            <div key={idx} className="flex gap-3 border-b pb-3">
+                            <div key={item.name} className="flex gap-3 border-b pb-3">
                                 <div className="w-16 h-16 rounded-md bg-gray-100 overflow-hidden flex-shrink-0">
                                     <img src={item.image} alt={item.name} className="w-full h-full object-cover" />
                                 </div>
@@ -1294,6 +1319,9 @@ const App: React.FC = () => {
                 />;
              case MessageType.GoalSelection:
                 const [selectedGoals, setSelectedGoals] = useState<string[]>([]);
+                const dynamicSuggestions = getDynamicSuggestions(skinAnalysisResult || []);
+                const otherGoals = allGoals.filter(g => !dynamicSuggestions.some(s => s.id === g.id));
+                
                 const toggleGoal = (id: string) => {
                      if (id === 'None of these') {
                         setSelectedGoals(['None of these']);
@@ -1314,7 +1342,7 @@ const App: React.FC = () => {
 
                         <p className="text-xs font-bold text-yellow-600 mb-2">⭐ SUGGESTION</p>
                         <div className="space-y-2 mb-4">
-                            {mockGoals.filter(g => g.isSuggestion).map(goal => (
+                            {dynamicSuggestions.map(goal => (
                                 <button key={goal.id} onClick={() => toggleGoal(goal.text)} className={`w-full p-3 border rounded-lg text-left flex items-center gap-3 transition-all ${selectedGoals.includes(goal.text) ? 'bg-blue-600 text-white' : 'bg-white hover:bg-gray-50'}`}>
                                     {goal.icon}
                                     <span className="font-medium text-sm flex-1">{goal.text}</span>
@@ -1324,7 +1352,7 @@ const App: React.FC = () => {
                         </div>
 
                         <div className="space-y-2">
-                             {mockGoals.filter(g => !g.isSuggestion).map(goal => (
+                             {otherGoals.map(goal => (
                                 <button key={goal.id} onClick={() => toggleGoal(goal.text)} className={`w-full p-3 border rounded-lg text-left flex items-center gap-3 transition-all ${selectedGoals.includes(goal.text) ? 'bg-blue-600 text-white' : 'bg-white hover:bg-gray-50'}`}>
                                     {goal.icon}
                                     <span className="font-medium text-sm">{goal.text}</span>
@@ -1362,8 +1390,8 @@ const App: React.FC = () => {
                             <div key={rec.category}>
                                 <h4 className="font-semibold text-md mb-3 text-gray-700">{rec.category}</h4>
                                 <div className="grid grid-cols-2 gap-3">
-                                    {rec.products.map(product => (
-                                        <div key={product.name} className="border rounded-xl p-3 flex flex-col gap-2 bg-white relative">
+                                    {rec.products.map((product, index) => (
+                                        <div key={`${product.name}-${index}`} className="border rounded-xl p-3 flex flex-col gap-2 bg-white relative">
                                             {/* Make image clickable */}
                                             <a href={product.url} target="_blank" rel="noopener noreferrer" className="block">
                                                 <img src={product.image} alt={product.name} className="w-full h-24 object-cover rounded-md" />
@@ -1374,7 +1402,7 @@ const App: React.FC = () => {
                                                     <p className="font-bold text-sm leading-tight">{product.name}</p>
                                                 </a>
                                                 <p className="text-sm text-gray-700 my-1">{product.price}</p>
-                                                <div>{product.tags.map(tag => <span key={tag} className={`text-xs font-semibold px-2 py-0.5 rounded-full ${tag === 'On Sale' ? 'bg-yellow-100 text-yellow-800' : 'bg-green-100 text-green-800'}`}>{tag}</span>)}</div>
+                                                <div>{product.tags.map((tag, i) => <span key={`${tag}-${i}`} className={`text-xs font-semibold px-2 py-0.5 rounded-full ${tag === 'On Sale' ? 'bg-yellow-100 text-yellow-800' : 'bg-green-100 text-green-800'}`}>{tag}</span>)}</div>
                                             </div>
                                              <button onClick={() => addToCart(product)} className="w-full mt-1 py-2 bg-green-50 text-green-700 font-bold rounded-lg text-sm border border-green-200 hover:bg-green-100 transition-colors">ADD</button>
                                         </div>

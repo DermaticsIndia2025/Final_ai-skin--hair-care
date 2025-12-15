@@ -3,13 +3,7 @@ import { SkinConditionCategory, ProductRecommendation, SkincareRoutine, HairProf
 import { GoogleGenAI, Type, GenerateContentParameters, GenerateContentResponse } from "@google/genai";
 import { getAllProducts } from "../productData";
 
-// Fix for Property 'env' does not exist on type 'ImportMeta'
-const importMetaEnv = typeof import.meta !== 'undefined' ? (import.meta as any).env : undefined;
-const processEnv = typeof process !== 'undefined' ? process.env : undefined;
-
-const rawApiKeys = (importMetaEnv?.VITE_API_KEY as string | undefined)
-    ?? processEnv?.API_KEY
-    ?? processEnv?.VITE_API_KEY;
+const rawApiKeys = import.meta.env?.VITE_API_KEY || (typeof process !== 'undefined' ? process.env?.API_KEY || process.env?.VITE_API_KEY : undefined);
 
 if (!rawApiKeys) {
     throw new Error("API key environment variable is not set. Define VITE_API_KEY or API_KEY.");
@@ -332,6 +326,7 @@ export const getSkincareRoutine = async (analysis: SkinConditionCategory[], goal
         // Include truncated description to help AI understand ingredients without using too many tokens
         description: p.description ? p.description.substring(0, 300) + "..." : "",
         tags: p.suitableFor,
+        productType: p.productType,
         price: p.price
      })), null, 2);
 
@@ -357,6 +352,10 @@ export const getSkincareRoutine = async (analysis: SkinConditionCategory[], goal
            - **AM Routine (Morning):** Focus on Gentle Cleansing + Antioxidants (e.g. Vit C) + Hydration + Sun Protection.
            - **PM Routine (Evening):** Focus on Deep Cleansing + Treatments (Actives like Retinol/Exfoliants) + Repair/Moisturize.
         4. **Select Products:** Search the provided "PRODUCT CATALOG" and select the *single best* product for each step.
+           - **PRIORITIZE:** Products that explicitly mention the user's condition in their name or description.
+           - **MATCHING:** Ensure the product type (Cleanser, Serum, etc.) matches the step exactly.
+           - **BEST FIT:** If multiple products exist (e.g. multiple Vitamin C serums), choose the one that best targets the user's specific combination of concerns (e.g. Vitamin C + Hyaluronic Acid for Dry Skin with Spots).
+           - **AVOID:** Generic products if a targeted one is available.
         
         **CONSTRAINTS:**
         - **MANDATORY:** You MUST select products available in the catalog.
@@ -421,7 +420,7 @@ export const getSkincareRoutine = async (analysis: SkinConditionCategory[], goal
             return {
                 name: fullProduct.name,
                 price: fullProduct.price,
-                tags: [p.stepType, ...fullProduct.suitableFor.slice(0, 2)],
+                tags: Array.from(new Set([p.stepType, ...fullProduct.suitableFor.slice(0, 2)])),
                 image: fullProduct.imageUrl,
                 url: fullProduct.url,
                 id: fullProduct.id
