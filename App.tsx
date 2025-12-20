@@ -1,7 +1,8 @@
 import React, { useState, useRef, useEffect, useCallback, useMemo } from 'react';
 import { Sender, MessageType, ConversationStep, type Message, type SkinConditionCategory, type Goal, type ProductRecommendation, type HairQuestion, type Product, type HairProfileData } from './types';
-import { CameraIcon, CheckCircleIcon, LoadingDots, UploadIcon, TrashIcon, CartIcon, AnalyzeIcon, GoalAcneIcon, GoalOilIcon, GoalTextureIcon, GoalPoresIcon, GoalToneIcon, GoalHydrationIcon, GoalAgingIcon, GoalRednessIcon, GoalBarrierIcon, GoalHealthyIcon, GoalNoneIcon, PlusIcon, AppIcon, UserIcon, BotIcon } from './components/icons';
-import { analyzeSkin, analyzeHair, getSkincareRoutine, getHairCareRoutine } from './services/geminiService';
+import { CameraIcon, CheckCircleIcon, LoadingDots, UploadIcon, TrashIcon, CartIcon, AnalyzeIcon, GoalAcneIcon, GoalOilIcon, GoalTextureIcon, GoalPoresIcon, GoalToneIcon, GoalHydrationIcon, GoalAgingIcon, GoalRednessIcon, GoalBarrierIcon, GoalHealthyIcon, GoalNoneIcon, PlusIcon, AppIcon, UserIcon, BotIcon, DownloadIcon } from './components/icons';
+import { analyzeSkin, analyzeHair, getSkincareRoutine, getHairCareRoutine, chatWithAI } from './services/geminiService';
+import { generatePDF } from './utils/pdfGenerator';
 
 // Helper function to convert file to base64
 const fileToBase64 = (file: File): Promise<string> =>
@@ -32,14 +33,14 @@ const maleHairQuestions: HairQuestion[] = [
         type: MessageType.HairQuestionImageGrid, 
         question: "Which image best describes your hair loss?", 
         options: [
-            { label: "Stage - 1", image: "public/stage_1.png" }, 
-            { label: "Stage - 2", image: "public/stage_2.png" }, 
-            { label: "Stage - 3", image: "public/stage_3.png" },
-            { label: "Stage - 4", image: "public/stage_4.png" },
-            { label: "Stage - 5", image: "public/stage_5.png" },
-            { label: "Stage - 6", image: "public/stage_6.png" },
-            { label: "Coin Size Patch", image: "public/coin_size_patch.png" },
-            { label: "Heavy Hair Fall", image: "public/heavy_hair_fall.png" }
+            { label: "Stage - 1", image: "/Stage - 01.png" }, 
+            { label: "Stage - 2", image: "/Stage - 02.png" }, 
+            { label: "Stage - 3", image: "/Stage - 03.png" },
+            { label: "Stage - 4", image: "/Stage - 04.png" },
+            { label: "Stage - 5", image: "/Stage - 05.png" },
+            { label: "Stage - 6", image: "/Stage - 06.png" },
+            { label: "Coin Size Patch", image: "/Stage - 07.png" },
+            { label: "Heavy Hair Fall", image: "/Stage - 08.png" }
         ] 
     },
     { 
@@ -146,9 +147,9 @@ const femaleHairQuestions: HairQuestion[] = [
         type: MessageType.HairQuestionRadio, 
         question: "How much hairfall do you experience while oiling, combing or washing your hair?", 
         options: [
-            { label: "Normal hairfall ~20 strands", image: "public/hairfall_normal.png" }, 
-            { label: "I notice a bigger clump than normal ~40-50 strands", image: "public/hairfall_medium.png" }, 
-            { label: "I get very big clumps of hair, more than 100 hair strands", image: "public/hairfall_heavy.png" }, 
+            { label: "Normal hairfall ~20 strands", image: "/01.png" }, 
+            { label: "I notice a bigger clump than normal ~40-50 strands", image: "/02.png" }, 
+            { label: "I get very big clumps of hair, more than 100 hair strands", image: "/03.png" }, 
         ] 
     },
     { 
@@ -1049,13 +1050,46 @@ const App: React.FC = () => {
         }
     }, [advanceConversation]);
 
+    const handleChatSubmit = useCallback(async (query: string) => {
+        // Replace ChatInput with User Text
+        setMessages(prev => {
+            const newMessages = [...prev];
+            const lastMsg = newMessages[newMessages.length - 1];
+            if (lastMsg.type === MessageType.ChatInput) {
+                newMessages[newMessages.length - 1] = { ...lastMsg, type: MessageType.Text, content: query, sender: Sender.User };
+            } else {
+                // Fallback if for some reason the last message wasn't ChatInput
+                newMessages.push({ id: Date.now(), sender: Sender.User, type: MessageType.Text, content: query });
+            }
+            return newMessages;
+        });
+
+        addMessage(Sender.Bot, MessageType.Loading, "Thinking...");
+
+        // Gather context
+        const recommendationsMsg = messages.find(m => m.type === MessageType.ProductRecommendation);
+        const recommendations = recommendationsMsg ? recommendationsMsg.content : null;
+
+        const context = {
+            analysis: skinAnalysisResult,
+            recommendations: recommendations
+        };
+
+        const response = await chatWithAI(query, context);
+
+        setMessages(prev => prev.filter(msg => msg.type !== MessageType.Loading));
+        addMessage(Sender.Bot, MessageType.Text, response);
+        addMessage(Sender.Bot, MessageType.ChatInput, null);
+
+    }, [messages, skinAnalysisResult]);
+
     const handleInitialChoice = (choice: 'skin' | 'hair') => {
         // Clear previous analysis data when switching context
         setUploadedImages([]);
         setSkinAnalysisResult(null);
         setConversationState({ ...conversationState, assessmentType: choice, step: choice === 'skin' ? ConversationStep.Skin_ProductUsage_Start : ConversationStep.Hair_Gender });
         const content = choice === 'skin' ? 'Skin Assessment' : 'Hair Assessment';
-        const image = choice === 'skin' ? 'public/skin_assessment.png' : 'public/hair_assessment.png';
+        const image = choice === 'skin' ? '/skin_assessment.png' : '/hair_assessment.png';
         
         if (choice === 'hair') {
              // Show the specific Hair Assessment Card
@@ -1412,6 +1446,12 @@ const App: React.FC = () => {
                         ))}
                         <div className="space-y-3 pt-3">
                              <button onClick={handleAddAll} className="w-full px-4 py-3 bg-blue-600 text-white font-bold rounded-lg hover:bg-blue-700 transition-colors text-base">Add All to Cart</button>
+                             <button onClick={() => addMessage(Sender.Bot, MessageType.ChatInput, null)} className="w-full px-4 py-3 bg-purple-600 text-white font-bold rounded-lg hover:bg-purple-700 transition-colors text-base flex items-center justify-center gap-2">
+                                <BotIcon /> Chat with AI Expert
+                             </button>
+                             <button onClick={() => generatePDF(skinAnalysisResult, recommendations)} className="w-full px-4 py-3 bg-blue-50 text-blue-700 font-bold rounded-lg border-2 border-blue-200 hover:bg-blue-100 transition-colors text-base flex items-center justify-center gap-2">
+                                <DownloadIcon /> Download Report (PDF)
+                             </button>
                              <button onClick={() => handleNextStep(ConversationStep.Skin_Report)} className="w-full px-4 py-3 bg-gray-100 text-gray-800 font-bold rounded-lg hover:bg-gray-200 transition-colors text-base">Next: AI Doctor's Report</button>
                         </div>
                     </div>
@@ -1586,6 +1626,30 @@ const App: React.FC = () => {
                     </div>
                 );
             }
+            case MessageType.ChatInput:
+                return (
+                    <div className="p-2">
+                        <form onSubmit={(e) => {
+                            e.preventDefault();
+                            const input = (e.target as any).elements.chatInput;
+                            if (input.value.trim()) {
+                                handleChatSubmit(input.value.trim());
+                                input.value = '';
+                            }
+                        }} className="flex gap-2">
+                            <input 
+                                name="chatInput"
+                                type="text" 
+                                placeholder="Ask a question..." 
+                                className="flex-grow px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                autoFocus
+                            />
+                            <button type="submit" className="bg-blue-600 text-white px-4 py-2 rounded-md font-semibold hover:bg-blue-700">
+                                Send
+                            </button>
+                        </form>
+                    </div>
+                );
             default: return null;
         }
     };

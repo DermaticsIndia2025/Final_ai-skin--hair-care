@@ -615,3 +615,29 @@ export const getHairCareRoutine = async (
         throw new Error("Failed to generate haircare routine.");
     }
 };
+
+export const chatWithAI = async (query: string, context: { analysis: any, recommendations: any }): Promise<string> => {
+    const prompt = `
+    You are a helpful AI assistant for a skin and hair care application.
+    
+    CONTEXT:
+    User Analysis: ${JSON.stringify(context.analysis)}
+    User Recommendations: ${JSON.stringify(context.recommendations)}
+    
+    USER QUESTION: ${query}
+    
+    Please answer the user's question based on the provided context. Keep the answer concise and helpful.
+    `;
+    
+    try {
+        const response = await generateContentWithFailover({
+            model: 'gemini-2.5-flash',
+            contents: { parts: [{ text: prompt }] }
+        });
+        return response.text.trim();
+    } catch (error) {
+        console.error("Error in chatWithAI:", error);
+        return "I'm sorry, I'm having trouble answering that right now.";
+    }
+};
+

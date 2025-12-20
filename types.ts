@@ -32,6 +32,7 @@ export enum MessageType {
   HairQuestionRadio = 'hairQuestionRadio',
   HairQuestionImageGrid = 'hairQuestionImageGrid',
   HairQuestionCheckbox = 'hairQuestionCheckbox', // New: For Q8
+  ChatInput = 'chatInput',
 }
 
 
