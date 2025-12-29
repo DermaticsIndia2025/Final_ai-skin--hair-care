@@ -3,6 +3,7 @@ import { Sender, MessageType, ConversationStep, type Message, type SkinCondition
 import { CameraIcon, CheckCircleIcon, LoadingDots, UploadIcon, TrashIcon, CartIcon, AnalyzeIcon, GoalAcneIcon, GoalOilIcon, GoalTextureIcon, GoalPoresIcon, GoalToneIcon, GoalHydrationIcon, GoalAgingIcon, GoalRednessIcon, GoalBarrierIcon, GoalHealthyIcon, GoalNoneIcon, PlusIcon, AppIcon, UserIcon, BotIcon, DownloadIcon } from './components/icons';
 import { analyzeSkin, analyzeHair, getSkincareRoutine, getHairCareRoutine, chatWithAI } from './services/geminiService';
 import { generatePDF } from './utils/pdfGenerator';
+import { CameraCapture } from './components/CameraCapture';
 
 // Helper function to convert file to base64
 const fileToBase64 = (file: File): Promise<string> =>
@@ -660,6 +661,7 @@ const App: React.FC = () => {
     // Cart State
     const [cartItems, setCartItems] = useState<CartItem[]>([]);
     const [isCartOpen, setIsCartOpen] = useState(false);
+    const [isCameraOpen, setIsCameraOpen] = useState(false);
 
     const [conversationState, setConversationState] = useState({
         assessmentType: null as 'skin' | 'hair' | null,
@@ -878,6 +880,19 @@ const App: React.FC = () => {
         setUploadedImages(allImages);
         setActiveImageIndex(allImages.length - 1);
         e.target.value = ''; 
+    }, []);
+
+    const handleCameraCapture = useCallback(async (file: File) => {
+        const base64 = await fileToBase64(file);
+        const newImage = {
+            name: file.name,
+            url: URL.createObjectURL(file),
+            base64: base64,
+        };
+        
+        const allImages = [...uploadedImagesRef.current, newImage];
+        setUploadedImages(allImages);
+        setActiveImageIndex(allImages.length - 1);
     }, []);
     
     const handleRemoveImage = (indexToRemove: number) => {
@@ -1257,7 +1272,7 @@ const App: React.FC = () => {
                                      <span className="text-[10px] font-medium mt-0.5">Add</span>
                                 </button>
 
-                                <button disabled={isAnalyzing} onClick={() => cameraInputRef.current?.click()} className="flex-shrink-0 w-14 h-14 border-2 border-dashed border-gray-300 rounded-lg flex flex-col items-center justify-center text-gray-400 hover:bg-gray-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
+                                <button disabled={isAnalyzing} onClick={() => setIsCameraOpen(true)} className="flex-shrink-0 w-14 h-14 border-2 border-dashed border-gray-300 rounded-lg flex flex-col items-center justify-center text-gray-400 hover:bg-gray-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
                                      <CameraIcon className="w-5 h-5 text-gray-400 mb-0" />
                                      <span className="text-[10px] font-medium mt-0.5">Camera</span>
                                 </button>
@@ -1298,7 +1313,7 @@ const App: React.FC = () => {
                                  <button onClick={() => uploadInputRef.current?.click()} className="flex-1 w-full text-blue-600 font-semibold py-3 bg-blue-50 border-2 border-dashed border-blue-200 rounded-lg hover:bg-blue-100 transition-colors flex items-center justify-center">
                                     <UploadIcon /> Upload Photos
                                 </button>
-                                <button onClick={() => cameraInputRef.current?.click()} className="flex-1 w-full text-blue-600 font-semibold py-3 bg-blue-50 border-2 border-dashed border-blue-200 rounded-lg hover:bg-blue-100 transition-colors flex items-center justify-center">
+                                <button onClick={() => setIsCameraOpen(true)} className="flex-1 w-full text-blue-600 font-semibold py-3 bg-blue-50 border-2 border-dashed border-blue-200 rounded-lg hover:bg-blue-100 transition-colors flex items-center justify-center">
                                     <CameraIcon /> Use Camera
                                 </button>
                              </div>
@@ -1323,7 +1338,7 @@ const App: React.FC = () => {
                              <button onClick={() => uploadInputRef.current?.click()} className="flex-1 w-full text-blue-600 font-semibold py-3 bg-blue-50 border-2 border-dashed border-blue-200 rounded-lg hover:bg-blue-100 transition-colors flex items-center justify-center">
                                 <UploadIcon /> Upload Photos
                             </button>
-                            <button onClick={() => cameraInputRef.current?.click()} className="flex-1 w-full text-blue-600 font-semibold py-3 bg-blue-50 border-2 border-dashed border-blue-200 rounded-lg hover:bg-blue-100 transition-colors flex items-center justify-center">
+                            <button onClick={() => setIsCameraOpen(true)} className="flex-1 w-full text-blue-600 font-semibold py-3 bg-blue-50 border-2 border-dashed border-blue-200 rounded-lg hover:bg-blue-100 transition-colors flex items-center justify-center">
                                 <CameraIcon /> Use Camera
                             </button>
                         </div>
@@ -1666,7 +1681,8 @@ const App: React.FC = () => {
     }, []);
 
     return (
-        <div className="flex flex-col h-screen bg-white max-w-md mx-auto shadow-2xl overflow-hidden font-sans text-gray-900 relative">
+        <div className="flex flex-col h-screen bg-gray-100 font-sans text-gray-900 relative">
+            <div className="w-full max-w-4xl mx-auto h-full flex flex-col bg-white shadow-2xl overflow-hidden relative sm:my-4 sm:rounded-xl sm:h-[95vh]">
             {/* Header */}
             <div className="bg-blue-600 p-4 text-white flex items-center justify-between shadow-md z-10">
                 <div className="flex items-center gap-3">
@@ -1733,6 +1749,12 @@ const App: React.FC = () => {
             </div>
             
             {/* Hidden Inputs */}
+            {isCameraOpen && (
+                <CameraCapture 
+                    onCapture={handleCameraCapture} 
+                    onClose={() => setIsCameraOpen(false)} 
+                />
+            )}
             <input 
                 type="file" 
                 ref={uploadInputRef} 
@@ -1749,6 +1771,7 @@ const App: React.FC = () => {
                 capture="environment"
                 onChange={handleFileSelect} 
             />
+            </div>
         </div>
     );
 };

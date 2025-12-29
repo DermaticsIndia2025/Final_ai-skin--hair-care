@@ -104,7 +104,11 @@ export const analyzeSkin = async (imagesBase64: string[]): Promise<SkinCondition
     - Oiliness, shine, sebum buildup
     - Scarring, post-acne marks, depressed scars
     - Uneven skin tone, patches of different color
-    - Other visible conditions
+    - Other visible conditions (BUT EXCLUDE normal facial hair)
+
+    **EXCLUSIONS (Do NOT report these as conditions):**
+    - Normal facial hair, beard, mustache, stubble.
+    - Do NOT tag "Facial Hair" or "Stubble" as a skin condition unless it is specifically folliculitis or ingrown hairs.
     
     **For EACH condition you find:**
     1. Create a descriptive name (e.g., "Acne Pustules", "Deep Forehead Wrinkles", "Dark Spots on Cheeks")
