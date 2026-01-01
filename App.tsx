@@ -598,6 +598,23 @@ const CartView: React.FC<{
     onRemove: (index: number) => void;
     onUpdateQuantity: (index: number, delta: number) => void;
 }> = ({ items, onClose, onRemove, onUpdateQuantity }) => {
+    const checkoutUrl = useMemo(() => {
+        if (items.length === 0) return 'https://dermatics.in/account/login';
+        
+        // Convert variant GIDs (gid://shopify/ProductVariant/123) to numeric IDs if needed
+        const itemsString = items
+            .map(item => {
+                const variantId = item.variantId?.includes('ProductVariant/') 
+                    ? item.variantId.split('ProductVariant/')[1] 
+                    : item.variantId;
+                return `${variantId}:${item.quantity}`;
+            })
+            .join(',');
+            
+        const cartPath = `/cart/${itemsString}`;
+        return `https://dermatics.in/account/login?checkout_url=${encodeURIComponent(cartPath)}`;
+    }, [items]);
+
     return (
         <div className="absolute inset-0 z-50 bg-black bg-opacity-50 flex justify-end">
             <div className="w-4/5 max-w-sm bg-white h-full shadow-xl flex flex-col animate-fadeIn">
@@ -642,9 +659,14 @@ const CartView: React.FC<{
                 </div>
                 
                 <div className="p-4 border-t bg-gray-50">
-                    <button className="w-full py-3 bg-blue-600 text-white font-bold rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed" disabled={items.length === 0}>
+                    <a 
+                        href={items.length > 0 ? checkoutUrl : '#'} 
+                        target="_blank" 
+                        rel="noopener noreferrer"
+                        className={`block w-full py-3 bg-blue-600 text-white text-center font-bold rounded-lg hover:bg-blue-700 transition-colors ${items.length === 0 ? 'opacity-50 cursor-not-allowed pointer-events-none' : ''}`}
+                    >
                         Checkout Now
-                    </button>
+                    </a>
                 </div>
             </div>
         </div>
@@ -954,8 +976,9 @@ const App: React.FC = () => {
                              price: s.price,
                              tags: [s.stepType],
                              image: s.productImageUrl,
-                             url: s.productUrl, // Pass URL
-                             id: s.productId // Pass ID
+                             url: s.productUrl,
+                             id: s.productId,
+                             variantId: s.variantId
                          }))
                      });
                  }
@@ -967,8 +990,9 @@ const App: React.FC = () => {
                              price: s.price,
                              tags: [s.stepType],
                              image: s.productImageUrl,
-                             url: s.productUrl, // Pass URL
-                             id: s.productId // Pass ID
+                             url: s.productUrl,
+                             id: s.productId,
+                             variantId: s.variantId
                          }))
                      });
                  }

@@ -99,6 +99,7 @@ export interface Goal {
 
 export interface Product {
     id?: string;
+    variantId?: string;
     name: string;
     price: string;
     tags: string[];
