@@ -3,9 +3,17 @@ import cors from 'cors';
 import dotenv from 'dotenv';
 import path from 'path';
 import { fileURLToPath } from 'url';
-import { GoogleGenAI, SchemaType } from '@google/genai';
+import { GoogleGenAI } from '@google/genai';
 
 dotenv.config();
+
+const SchemaType = {
+    STRING: 'string',
+    NUMBER: 'number',
+    BOOLEAN: 'boolean',
+    OBJECT: 'object',
+    ARRAY: 'array'
+};
 
 const app = express();
 const PORT = process.env.PORT || 5000;
