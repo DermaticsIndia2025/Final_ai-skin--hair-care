@@ -279,7 +279,7 @@ app.post('/api/analyze-hair', async (req, res) => {
         Provide the output strictly in JSON format according to the provided schema.`;
 
         const response = await genAI.models.generateContent({
-            model: 'gemini-1.5-flash',
+            model: 'gemini-2.5-flash',
             contents: { parts: [...imageParts, { text: prompt }] },
             config: {
                 responseMimeType: "application/json",
