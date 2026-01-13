@@ -163,7 +163,7 @@ app.post('/api/analyze-skin', async (req, res) => {
         Provide output in JSON format. Do NOT return empty arrays for boundingBoxes - every condition MUST have visible boxes.`;
 
         const response = await genAI.models.generateContent({
-            model: 'gemini-2.5-flash',
+            model: 'gemini-1.5-flash',
             contents: { parts: [...imageParts, { text: prompt }] },
             config: {
                 responseMimeType: "application/json",
@@ -279,7 +279,7 @@ app.post('/api/analyze-hair', async (req, res) => {
         Provide the output strictly in JSON format according to the provided schema.`;
 
         const response = await genAI.models.generateContent({
-            model: 'gemini-2.5-flash',
+            model: 'gemini-1.5-flash',
             contents: { parts: [...imageParts, { text: prompt }] },
             config: {
                 responseMimeType: "application/json",
@@ -365,7 +365,7 @@ app.post('/api/recommend-skin', async (req, res) => {
         Return JSON with am/pm routines. Use productId from catalog.`;
 
         const response = await genAI.models.generateContent({
-            model: 'gemini-2.5-flash',
+            model: 'gemini-1.5-flash',
             contents: { parts: [{ text: prompt }] },
             config: {
                 responseMimeType: "application/json",
@@ -413,7 +413,7 @@ app.post('/api/recommend-hair', async (req, res) => {
         Return JSON with title, introduction, am/pm routines, lifestyleTips. Use productId from catalog.`;
 
         const response = await genAI.models.generateContent({
-            model: 'gemini-2.5-flash',
+            model: 'gemini-1.5-flash',
             contents: { parts: [{ text: prompt }] },
             config: {
                 responseMimeType: "application/json",
