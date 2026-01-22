@@ -15,6 +15,7 @@ export enum MessageType {
   
   // Initial choice
   AssessmentOptions = 'assessmentOptions',
+  UserInfo = 'userInfo',
   
   // Skin Flow
   ProductOptions = 'productOptions',
@@ -37,6 +38,7 @@ export enum MessageType {
 
 
 export enum ConversationStep {
+  UserDetails,
   Initial,
   // Skin Flow
   Skin_ProductUsage_Start,
@@ -146,4 +148,11 @@ export interface SkincareRoutine {
 export interface HairProfileData {
     gender: string;
     [key: string]: any;
+}
+
+export interface UserInfo {
+    name: string;
+    age: string;
+    phone: string;
+    email: string;
 }

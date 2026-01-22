@@ -127,7 +127,7 @@ export const analyzeSkin = async (imagesBase64: string[]): Promise<SkinCondition
 
     try {
         const response = await generateContentWithFailover({
-            model: 'gemini-2.5-flash',
+            model: 'gemini-1.5-flash',
             contents: { parts: [...imageParts, { text: prompt }] },
             config: {
                 responseMimeType: "application/json",
@@ -235,7 +235,7 @@ Provide the output strictly in JSON format according to the provided schema.
 
     try {
         const response = await generateContentWithFailover({
-            model: 'gemini-2.5-flash',
+            model: 'gemini-1.5-flash',
             contents: { parts: [...imageParts, textPart] },
             config: {
                 responseMimeType: "application/json",
@@ -369,7 +369,7 @@ export const getSkincareRoutine = async (analysis: SkinConditionCategory[], goal
 
     try {
         const response = await generateContentWithFailover({
-            model: 'gemini-2.5-flash',
+            model: 'gemini-1.5-flash',
             contents: prompt,
             config: {
                 responseMimeType: "application/json",
@@ -563,7 +563,7 @@ export const getHairCareRoutine = async (
 
     try {
         const response = await generateContentWithFailover({
-            model: 'gemini-2.5-flash',
+            model: 'gemini-1.5-flash',
             contents: prompt,
             config: {
                 responseMimeType: "application/json",
@@ -637,7 +637,7 @@ export const chatWithAI = async (query: string, context: { analysis: any, recomm
     
     try {
         const response = await generateContentWithFailover({
-            model: 'gemini-2.5-flash',
+            model: 'gemini-1.5-flash',
             contents: { parts: [{ text: prompt }] }
         });
         return response.text.trim();

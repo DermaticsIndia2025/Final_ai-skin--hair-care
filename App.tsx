@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect, useCallback, useMemo } from 'react';
-import { Sender, MessageType, ConversationStep, type Message, type SkinConditionCategory, type Goal, type ProductRecommendation, type HairQuestion, type Product, type HairProfileData } from './types';
+import { Sender, MessageType, ConversationStep, type Message, type SkinConditionCategory, type Goal, type ProductRecommendation, type HairQuestion, type Product, type HairProfileData, type UserInfo } from './types';
 import { CameraIcon, CheckCircleIcon, LoadingDots, UploadIcon, TrashIcon, CartIcon, AnalyzeIcon, GoalAcneIcon, GoalOilIcon, GoalTextureIcon, GoalPoresIcon, GoalToneIcon, GoalHydrationIcon, GoalAgingIcon, GoalRednessIcon, GoalBarrierIcon, GoalHealthyIcon, GoalNoneIcon, PlusIcon, AppIcon, UserIcon, BotIcon, DownloadIcon } from './components/icons';
 import { analyzeSkin, analyzeHair, getSkincareRoutine, getHairCareRoutine, chatWithAI } from './services/geminiService';
 import { generatePDF } from './utils/pdfGenerator';
@@ -421,6 +421,78 @@ const ProductSelector: React.FC<{ onSelect: (product: string) => void, prompt: s
     );
 };
 
+const UserInfoForm: React.FC<{ onSubmit: (info: UserInfo) => void }> = ({ onSubmit }) => {
+    const [name, setName] = useState('');
+    const [age, setAge] = useState('');
+    const [phone, setPhone] = useState('');
+    const [email, setEmail] = useState('');
+
+    const handleSubmit = (e: React.FormEvent) => {
+        e.preventDefault();
+        if (name && age && phone && email) {
+            onSubmit({ name, age, phone, email });
+        }
+    };
+
+    return (
+        <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 max-w-md mx-auto my-4">
+            <h2 className="text-xl font-bold text-gray-800 mb-4">Personal Information</h2>
+            <form onSubmit={handleSubmit} className="space-y-4">
+                <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Full Name</label>
+                    <input
+                        type="text"
+                        required
+                        value={name}
+                        onChange={(e) => setName(e.target.value)}
+                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all"
+                        placeholder="Enter your name"
+                    />
+                </div>
+                <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Age</label>
+                    <input
+                        type="number"
+                        required
+                        value={age}
+                        onChange={(e) => setAge(e.target.value)}
+                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all"
+                        placeholder="Enter your age"
+                    />
+                </div>
+                <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Phone Number</label>
+                    <input
+                        type="tel"
+                        required
+                        value={phone}
+                        onChange={(e) => setPhone(e.target.value)}
+                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all"
+                        placeholder="Enter your phone number"
+                    />
+                </div>
+                <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Email Address</label>
+                    <input
+                        type="email"
+                        required
+                        value={email}
+                        onChange={(e) => setEmail(e.target.value)}
+                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all"
+                        placeholder="Enter your email"
+                    />
+                </div>
+                <button
+                    type="submit"
+                    className="w-full bg-blue-600 text-white font-bold py-3 rounded-xl hover:bg-blue-700 transition-colors shadow-lg shadow-blue-200 mt-2"
+                >
+                    Start Assessment
+                </button>
+            </form>
+        </div>
+    );
+};
+
 const AnalysisResultView: React.FC<{ 
     images: UploadedImage[], 
     analysis: SkinConditionCategory[], 
@@ -682,12 +754,13 @@ const App: React.FC = () => {
     
     // Cart State
     const [cartItems, setCartItems] = useState<CartItem[]>([]);
+    const [userInfo, setUserInfo] = useState<UserInfo | null>(null);
     const [isCartOpen, setIsCartOpen] = useState(false);
     const [isCameraOpen, setIsCameraOpen] = useState(false);
 
     const [conversationState, setConversationState] = useState({
         assessmentType: null as 'skin' | 'hair' | null,
-        step: ConversationStep.Initial,
+        step: ConversationStep.UserDetails,
         hairQuestionIndex: 0,
         hairAnswers: {} as Record<number, string | string[]>,
         skinProducts: [] as { name: string, currentlyUsing?: boolean, duration?: string }[],
@@ -866,10 +939,11 @@ const App: React.FC = () => {
         setIsAnalyzing(false);
         setActiveImageIndex(0);
         setCartItems([]); // Reset Cart too
+        setUserInfo(null);
         setIsCartOpen(false);
         setConversationState({
             assessmentType: null,
-            step: ConversationStep.Initial,
+            step: ConversationStep.UserDetails,
             hairQuestionIndex: 0,
             hairAnswers: {},
             skinProducts: [],
@@ -881,9 +955,9 @@ const App: React.FC = () => {
             { id: Date.now(), sender: Sender.Bot, type: MessageType.Text, content: "Hello! I'm your AI Dermatologist assistant." }
         ]);
 
-        // Re-trigger the initial assessment options
+        // Re-trigger the user info form
         setTimeout(() => {
-             setMessages(prev => [...prev, { id: Date.now(), sender: Sender.Bot, type: MessageType.AssessmentOptions, content: null }]);
+             setMessages(prev => [...prev, { id: Date.now(), sender: Sender.Bot, type: MessageType.UserInfo, content: null }]);
         }, 600);
     }, []);
 
@@ -1122,6 +1196,18 @@ const App: React.FC = () => {
 
     }, [messages, skinAnalysisResult]);
 
+    const handleUserInfoSubmit = (info: UserInfo) => {
+        setUserInfo(info);
+        addMessage(Sender.User, MessageType.UserInfo, info);
+        setTimeout(() => {
+            addMessage(Sender.Bot, MessageType.Text, `Thank you, ${info.name.split(' ')[0]}! Now, please select a concern to begin.`);
+            setTimeout(() => {
+                 addMessage(Sender.Bot, MessageType.AssessmentOptions, null);
+            }, 600);
+        }, 500);
+        setConversationState(s => ({ ...s, step: ConversationStep.Initial }));
+    };
+
     const handleInitialChoice = (choice: 'skin' | 'hair') => {
         // Clear previous analysis data when switching context
         setUploadedImages([]);
@@ -1173,6 +1259,17 @@ const App: React.FC = () => {
                 }
                 return <div>{message.content}</div>;
             case MessageType.Loading: return <div className="flex items-center gap-2"><LoadingDots /> <p>{message.content}</p></div>;
+            case MessageType.UserInfo:
+                if (message.sender === Sender.User) {
+                    return (
+                        <div className="space-y-1">
+                            <p className="font-semibold">{message.content.name}</p>
+                            <p className="text-xs opacity-80">{message.content.age} years | {message.content.phone}</p>
+                            <p className="text-xs opacity-80">{message.content.email}</p>
+                        </div>
+                    );
+                }
+                return <UserInfoForm onSubmit={handleUserInfoSubmit} />;
             case MessageType.AssessmentOptions:
                  if (message.sender === Sender.User) {
                     return (
@@ -1699,7 +1796,7 @@ const App: React.FC = () => {
             initializedRef.current = true;
             addMessage(Sender.Bot, MessageType.Text, "Hello! I'm your AI Dermatologist assistant.");
             setTimeout(() => {
-                 addMessage(Sender.Bot, MessageType.AssessmentOptions, null);
+                 addMessage(Sender.Bot, MessageType.UserInfo, null);
             }, 600);
         }
     }, []);
