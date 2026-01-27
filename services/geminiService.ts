@@ -323,9 +323,9 @@ export const getSkincareRoutine = async (analysis: SkinConditionCategory[], goal
 
      const goalsString = goals.join(', ');
      
-     // CRITICAL: We pass the ID so the AI can return it.
+     // CRITICAL: We pass the variantId so the AI can return it.
      const productCatalogString = JSON.stringify(skincareCatalog.map(p => ({
-        id: p.id,
+        id: p.variantId,
         name: p.name,
         // Include truncated description to help AI understand ingredients without using too many tokens
         description: p.description ? p.description.substring(0, 300) + "..." : "",
@@ -363,7 +363,7 @@ export const getSkincareRoutine = async (analysis: SkinConditionCategory[], goal
         
         **CONSTRAINTS:**
         - **MANDATORY:** You MUST select products available in the catalog.
-        - **MANDATORY:** For each product, you MUST return the exact 'productId' from the catalog.
+        - **MANDATORY:** For each product, you MUST return the exact 'productId' (which is the variantId in the catalog) from the catalog.
         - **NO HALLUCINATIONS:** If the catalog does not have a suitable product for a specific step (e.g., no Vitamin C serum), skip that step. Do NOT invent "General Advice" or "Generic Serum".
      `;
 
@@ -382,7 +382,7 @@ export const getSkincareRoutine = async (analysis: SkinConditionCategory[], goal
                                 type: Type.OBJECT,
                                 properties: {
                                     stepType: { type: Type.STRING, description: "e.g. Cleanser, Serum, Moisturizer" },
-                                    productId: { type: Type.STRING, description: "The exact ID from the product catalog." },
+                                    productId: { type: Type.STRING, description: "The exact variantId from the product catalog." },
                                     name: { type: Type.STRING, description: "Name of the product" },
                                     reason: { type: Type.STRING, description: "Why this product was chosen (mention active ingredient)." }
                                 },
@@ -395,7 +395,7 @@ export const getSkincareRoutine = async (analysis: SkinConditionCategory[], goal
                                  type: Type.OBJECT,
                                  properties: {
                                      stepType: { type: Type.STRING, description: "e.g. Cleanser, Treatment, Moisturizer" },
-                                     productId: { type: Type.STRING, description: "The exact ID from the product catalog." },
+                                     productId: { type: Type.STRING, description: "The exact variantId from the product catalog." },
                                      name: { type: Type.STRING, description: "Name of the product" },
                                      reason: { type: Type.STRING, description: "Why this product was chosen (mention active ingredient)." }
                                  },
@@ -412,9 +412,9 @@ export const getSkincareRoutine = async (analysis: SkinConditionCategory[], goal
         
         // Helper to hydrate products
         const hydrate = (list: any[]) => list.map((p: any) => {
-            // Try finding by ID first (most robust)
-            let fullProduct = skincareCatalog.find(prod => prod.id === p.productId);
-            // Fallback to name match if ID fails or AI hallucinated a slightly different ID
+            // Try finding by variantId first (most robust)
+            let fullProduct = skincareCatalog.find(prod => prod.variantId === p.productId);
+            // Fallback to name match if variantId fails or AI hallucinated a slightly different ID
             if (!fullProduct) {
                 fullProduct = skincareCatalog.find(prod => prod.name === p.name);
             }
@@ -516,7 +516,7 @@ export const getHairCareRoutine = async (
 
     const goalsString = goals.join(', ');
     const productCatalogString = JSON.stringify(hairCatalog.map(p => ({
-        id: p.id,
+        id: p.variantId,
         name: p.name,
         description: p.description ? p.description.substring(0, 300) + "..." : "", // Include description for ingredients
         tags: p.suitableFor,
@@ -544,7 +544,7 @@ export const getHairCareRoutine = async (
         4. **Select:** Pick the most potent product for each step.
         
         **CONSTRAINTS:**
-        - **STRICT ID MATCHING:** You MUST return the exact 'productId' from the provided catalog.
+        - **STRICT ID MATCHING:** You MUST return the exact 'productId' (which is the variantId in the catalog) from the provided catalog.
         - **NO HALLUCINATIONS:** If no product exists for a specific concern (e.g., no Minoxidil available), omit that step. Do NOT invent products.
         - **NO FACE PRODUCTS:** Do NOT recommend face washes or skin creams.
     `;
@@ -553,7 +553,7 @@ export const getHairCareRoutine = async (
         type: Type.OBJECT,
         properties: {
             stepType: { type: Type.STRING },
-            productId: { type: Type.STRING },
+            productId: { type: Type.STRING, description: "The exact variantId from the product catalog." },
             productName: { type: Type.STRING },
             purpose: { type: Type.STRING },
             keyIngredients: { type: Type.ARRAY, items: { type: Type.STRING } },
@@ -594,7 +594,7 @@ export const getHairCareRoutine = async (
         // Helper to hydrate product data
         const hydrateRoutine = (items: any[]) => {
             return items.map(item => {
-                let fullProduct = hairCatalog.find(p => p.id === item.productId);
+                let fullProduct = hairCatalog.find(p => p.variantId === item.productId);
                 if (!fullProduct) fullProduct = hairCatalog.find(p => p.name === item.productName);
 
                 if (!fullProduct) return null; // Filter out if not found
