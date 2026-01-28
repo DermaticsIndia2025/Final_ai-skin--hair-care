@@ -380,7 +380,7 @@ app.post('/api/recommend-skin', async (req, res) => {
         });
 
         const recommendations = JSON.parse(response.text.trim());
-        const hydrate = (list) => list.map(p => {
+        const hydrate = (list) => (list || []).map(p => {
             const full = skincareCatalog.find(prod => prod.variantId === p.productId || prod.name === p.name);
             if (!full) return null;
             return {
@@ -433,13 +433,14 @@ app.post('/api/recommend-hair', async (req, res) => {
                         am: { type: SchemaType.ARRAY, items: { type: SchemaType.OBJECT, properties: { productId: { type: SchemaType.STRING }, productName: { type: SchemaType.STRING } } } },
                         pm: { type: SchemaType.ARRAY, items: { type: SchemaType.OBJECT, properties: { productId: { type: SchemaType.STRING }, productName: { type: SchemaType.STRING } } } },
                         lifestyleTips: { type: SchemaType.ARRAY, items: { type: SchemaType.STRING } }
-                    }
+                    },
+                    required: ["title", "introduction", "am", "pm"]
                 }
             }
         });
 
         const result = JSON.parse(response.text.trim());
-        const hydrate = (list) => list.map(item => {
+        const hydrate = (list) => (list || []).map(item => {
             const full = hairCatalog.find(p => p.variantId === item.productId || p.name === item.productName);
             if (!full) return null;
             return {
@@ -454,6 +455,61 @@ app.post('/api/recommend-hair', async (req, res) => {
         result.am = hydrate(result.am);
         result.pm = hydrate(result.pm);
         res.json(result);
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
+/**
+ * Endpoint: /api/doctor-report
+ * Method: POST
+ * Body: { analysis: [], type: 'skin' | 'hair' }
+ */
+app.post('/api/doctor-report', async (req, res) => {
+    try {
+        const { analysis, type } = req.body;
+        const prompt = `You are a senior dermatologist/trichologist. Based on this ${type} analysis: ${JSON.stringify(analysis)}, 
+        generate a professional medical report summary. 
+        Include:
+        1. Clinical Observations
+        2. Potential Root Causes
+        3. Professional Recommendations (Lifestyle & Care)
+        4. Disclaimer
+        
+        Keep it professional, empathetic, and clear. Format in Markdown.`;
+
+        const response = await genAI.models.generateContent({
+            model: 'gemini-2.5-flash',
+            contents: { parts: [{ text: prompt }] }
+        });
+
+        res.json({ report: response.text.trim() });
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
+/**
+ * Endpoint: /api/chat
+ * Method: POST
+ * Body: { query: "", context: { analysis: [], recommendations: [] } }
+ */
+app.post('/api/chat', async (req, res) => {
+    try {
+        const { query, context } = req.body;
+        const prompt = `You are an AI Skin & Hair Assistant for Dermatics India.
+        Context: ${JSON.stringify(context)}
+        User Question: ${query}
+        
+        Provide a concise, helpful, and scientifically accurate answer based on the user's analysis and products. 
+        If you don't know, suggest consulting a doctor.`;
+
+        const response = await genAI.models.generateContent({
+            model: 'gemini-2.5-flash',
+            contents: { parts: [{ text: prompt }] }
+        });
+
+        res.json({ response: response.text.trim() });
     } catch (error) {
         res.status(500).json({ error: error.message });
     }
