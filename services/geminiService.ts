@@ -425,7 +425,7 @@ export const getSkincareRoutine = async (analysis: SkinConditionCategory[], goal
                 tags: Array.from(new Set([p.stepType, ...fullProduct.suitableFor.slice(0, 2)])),
                 image: fullProduct.imageUrl,
                 url: fullProduct.url,
-                id: fullProduct.id,
+                productId: fullProduct.variantId,
                 variantId: fullProduct.variantId
             };
         }).filter(p => p !== null);
@@ -600,7 +600,7 @@ export const getHairCareRoutine = async (
                     productUrl: fullProduct.url,
                     productImageUrl: fullProduct.imageUrl,
                     price: fullProduct.price,
-                    productId: fullProduct.id,
+                    productId: fullProduct.variantId,
                     variantId: fullProduct.variantId
                 };
             }).filter(item => item !== null);
