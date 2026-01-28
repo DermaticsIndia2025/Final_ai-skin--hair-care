@@ -327,8 +327,6 @@ export const getSkincareRoutine = async (analysis: SkinConditionCategory[], goal
      const productCatalogString = JSON.stringify(skincareCatalog.map(p => ({
         id: p.variantId,
         name: p.name,
-        // Include truncated description to help AI understand ingredients without using too many tokens
-        description: p.description ? p.description.substring(0, 300) + "..." : "",
         tags: p.suitableFor,
         productType: p.productType,
         price: p.price
@@ -425,7 +423,6 @@ export const getSkincareRoutine = async (analysis: SkinConditionCategory[], goal
                 tags: Array.from(new Set([p.stepType, ...fullProduct.suitableFor.slice(0, 2)])),
                 image: fullProduct.imageUrl,
                 url: fullProduct.url,
-                productId: fullProduct.variantId,
                 variantId: fullProduct.variantId
             };
         }).filter(p => p !== null);
@@ -516,7 +513,6 @@ export const getHairCareRoutine = async (
     const productCatalogString = JSON.stringify(hairCatalog.map(p => ({
         id: p.variantId,
         name: p.name,
-        description: p.description ? p.description.substring(0, 300) + "..." : "", // Include description for ingredients
         tags: p.suitableFor,
         price: p.price
      })), null, 2);
@@ -538,7 +534,7 @@ export const getHairCareRoutine = async (
            - **Hair Loss:** Look for Minoxidil, Redensyl, Procapil, Capixyl, Anagain, Saw Palmetto, Biotin.
            - **Dandruff:** Look for Ketoconazole, Zinc Pyrithione (ZPTO), Piroctone Olamine, Salicylic Acid, Coal Tar.
            - **Damage/Frizz:** Look for Keratin, Argan Oil, Shea Butter, Silk Protein.
-        3. **Match Products:** Scan the catalog descriptions for these ingredients.
+        3. **Match Products:** Scan the catalog names/tags for these ingredients.
         4. **Select:** Pick the most potent product for each step.
         
         **CONSTRAINTS:**
@@ -600,7 +596,6 @@ export const getHairCareRoutine = async (
                     productUrl: fullProduct.url,
                     productImageUrl: fullProduct.imageUrl,
                     price: fullProduct.price,
-                    productId: fullProduct.variantId,
                     variantId: fullProduct.variantId
                 };
             }).filter(item => item !== null);
