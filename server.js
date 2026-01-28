@@ -85,9 +85,9 @@ async function getAllProducts() {
                 name: node.title,
                 url: node.onlineStoreUrl || `https://${SHOPIFY_DOMAIN}/products/${node.handle}`,
                 imageUrl: node.images.edges[0]?.node?.url || 'https://placehold.co/200x200?text=No+Image',
-                description: node.description,
-                suitableFor: node.tags || [],
+                variantId: node.variants.edges[0]?.node?.id,
                 price: price ? `${price.currencyCode} ${parseFloat(price.amount).toFixed(2)}` : 'N/A',
+                tags: node.tags || []
             };
         });
         return cachedProducts;
@@ -356,13 +356,13 @@ app.post('/api/recommend-skin', async (req, res) => {
 
         const analysisString = JSON.stringify(analysis);
         const goalsString = goals.join(', ');
-        const productCatalogString = JSON.stringify(skincareCatalog.map(p => ({ id: p.id, name: p.name, description: p.description?.substring(0, 200) })));
+        const productCatalogString = JSON.stringify(skincareCatalog.map(p => ({ id: p.variantId, name: p.name })));
 
         const prompt = `Create a skincare routine for:
         Analysis: ${analysisString}
         Goals: ${goalsString}
         Catalog: ${productCatalogString}
-        Return JSON with am/pm routines. Use productId from catalog.`;
+        Return JSON with am/pm routines. Use variantId as productId from catalog.`;
 
         const response = await genAI.models.generateContent({
             model: 'gemini-2.5-flash',
@@ -372,8 +372,8 @@ app.post('/api/recommend-skin', async (req, res) => {
                 responseSchema: {
                     type: SchemaType.OBJECT,
                     properties: {
-                        am: { type: SchemaType.ARRAY, items: { type: SchemaType.OBJECT, properties: { productId: { type: SchemaType.STRING }, name: { type: SchemaType.STRING }, stepType: { type: SchemaType.STRING }, reason: { type: SchemaType.STRING } } } },
-                        pm: { type: SchemaType.ARRAY, items: { type: SchemaType.OBJECT, properties: { productId: { type: SchemaType.STRING }, name: { type: SchemaType.STRING }, stepType: { type: SchemaType.STRING }, reason: { type: SchemaType.STRING } } } }
+                        am: { type: SchemaType.ARRAY, items: { type: SchemaType.OBJECT, properties: { productId: { type: SchemaType.STRING }, name: { type: SchemaType.STRING }, stepType: { type: SchemaType.STRING } } } },
+                        pm: { type: SchemaType.ARRAY, items: { type: SchemaType.OBJECT, properties: { productId: { type: SchemaType.STRING }, name: { type: SchemaType.STRING }, stepType: { type: SchemaType.STRING } } } }
                     }
                 }
             }
@@ -381,8 +381,16 @@ app.post('/api/recommend-skin', async (req, res) => {
 
         const recommendations = JSON.parse(response.text.trim());
         const hydrate = (list) => list.map(p => {
-            const full = skincareCatalog.find(prod => prod.id === p.productId || prod.name === p.name);
-            return full ? { ...p, ...full } : null;
+            const full = skincareCatalog.find(prod => prod.variantId === p.productId || prod.name === p.name);
+            if (!full) return null;
+            return {
+                name: full.name,
+                price: full.price,
+                imageUrl: full.imageUrl,
+                url: full.url,
+                variantId: full.variantId,
+                stepType: p.stepType
+            };
         }).filter(Boolean);
 
         res.json({ am: hydrate(recommendations.am), pm: hydrate(recommendations.pm) });
@@ -409,8 +417,8 @@ app.post('/api/recommend-hair', async (req, res) => {
         Analysis: ${JSON.stringify(analysis)}
         Profile: ${JSON.stringify(profile)}
         Goals: ${goals.join(', ')}
-        Catalog: ${JSON.stringify(hairCatalog.map(p => ({ id: p.id, name: p.name, description: p.description?.substring(0, 200) })))}
-        Return JSON with title, introduction, am/pm routines, lifestyleTips. Use productId from catalog.`;
+        Catalog: ${JSON.stringify(hairCatalog.map(p => ({ id: p.variantId, name: p.name })))}
+        Return JSON with title, introduction, am/pm routines, lifestyleTips. Use variantId as productId from catalog.`;
 
         const response = await genAI.models.generateContent({
             model: 'gemini-2.5-flash',
@@ -422,8 +430,8 @@ app.post('/api/recommend-hair', async (req, res) => {
                     properties: {
                         title: { type: SchemaType.STRING },
                         introduction: { type: SchemaType.STRING },
-                        am: { type: SchemaType.ARRAY, items: { type: SchemaType.OBJECT, properties: { productId: { type: SchemaType.STRING }, productName: { type: SchemaType.STRING }, purpose: { type: SchemaType.STRING } } } },
-                        pm: { type: SchemaType.ARRAY, items: { type: SchemaType.OBJECT, properties: { productId: { type: SchemaType.STRING }, productName: { type: SchemaType.STRING }, purpose: { type: SchemaType.STRING } } } },
+                        am: { type: SchemaType.ARRAY, items: { type: SchemaType.OBJECT, properties: { productId: { type: SchemaType.STRING }, productName: { type: SchemaType.STRING } } } },
+                        pm: { type: SchemaType.ARRAY, items: { type: SchemaType.OBJECT, properties: { productId: { type: SchemaType.STRING }, productName: { type: SchemaType.STRING } } } },
                         lifestyleTips: { type: SchemaType.ARRAY, items: { type: SchemaType.STRING } }
                     }
                 }
@@ -432,8 +440,15 @@ app.post('/api/recommend-hair', async (req, res) => {
 
         const result = JSON.parse(response.text.trim());
         const hydrate = (list) => list.map(item => {
-            const full = hairCatalog.find(p => p.id === item.productId || p.name === item.productName);
-            return full ? { ...item, ...full } : null;
+            const full = hairCatalog.find(p => p.variantId === item.productId || p.name === item.productName);
+            if (!full) return null;
+            return {
+                productName: full.name,
+                price: full.price,
+                imageUrl: full.imageUrl,
+                url: full.url,
+                variantId: full.variantId
+            };
         }).filter(Boolean);
 
         result.am = hydrate(result.am);
