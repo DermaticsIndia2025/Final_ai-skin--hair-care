@@ -383,10 +383,9 @@ export const getSkincareRoutine = async (analysis: SkinConditionCategory[], goal
                                 properties: {
                                     stepType: { type: Type.STRING, description: "e.g. Cleanser, Serum, Moisturizer" },
                                     productId: { type: Type.STRING, description: "The exact variantId from the product catalog." },
-                                    name: { type: Type.STRING, description: "Name of the product" },
-                                    reason: { type: Type.STRING, description: "Why this product was chosen (mention active ingredient)." }
+                                    name: { type: Type.STRING, description: "Name of the product" }
                                 },
-                                required: ["stepType", "productId", "name", "reason"]
+                                required: ["stepType", "productId", "name"]
                             }
                         },
                         pm: {
@@ -396,10 +395,9 @@ export const getSkincareRoutine = async (analysis: SkinConditionCategory[], goal
                                  properties: {
                                      stepType: { type: Type.STRING, description: "e.g. Cleanser, Treatment, Moisturizer" },
                                      productId: { type: Type.STRING, description: "The exact variantId from the product catalog." },
-                                     name: { type: Type.STRING, description: "Name of the product" },
-                                     reason: { type: Type.STRING, description: "Why this product was chosen (mention active ingredient)." }
+                                     name: { type: Type.STRING, description: "Name of the product" }
                                  },
-                                 required: ["stepType", "productId", "name", "reason"]
+                                 required: ["stepType", "productId", "name"]
                              }
                         }
                     },
@@ -554,11 +552,9 @@ export const getHairCareRoutine = async (
         properties: {
             stepType: { type: Type.STRING },
             productId: { type: Type.STRING, description: "The exact variantId from the product catalog." },
-            productName: { type: Type.STRING },
-            purpose: { type: Type.STRING },
-            keyIngredients: { type: Type.ARRAY, items: { type: Type.STRING } },
+            productName: { type: Type.STRING }
         },
-        required: ["stepType", "productName", "purpose", "productId"]
+        required: ["stepType", "productName", "productId"]
     };
 
     try {
@@ -577,7 +573,6 @@ export const getHairCareRoutine = async (
                                 introduction: { type: Type.STRING },
                                 am: { type: Type.ARRAY, items: productSchema },
                                 pm: { type: Type.ARRAY, items: productSchema },
-                                keyIngredients: { type: Type.ARRAY, items: { type: Type.STRING } },
                                 lifestyleTips: { type: Type.ARRAY, items: { type: Type.STRING } },
                                 disclaimer: { type: Type.STRING }
                             },
@@ -600,7 +595,7 @@ export const getHairCareRoutine = async (
                 if (!fullProduct) return null; // Filter out if not found
 
                 return {
-                    ...item,
+                    stepType: item.stepType,
                     productName: fullProduct.name,
                     productUrl: fullProduct.url,
                     productImageUrl: fullProduct.imageUrl,
