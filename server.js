@@ -23,15 +23,40 @@ app.use(cors());
 app.use(express.json({ limit: '50mb' })); // Allow large base64 payloads
 
 // Environment check
-const apiKey = process.env.GEMINI_API_KEY || process.env.API_KEY || process.env.VITE_API_KEY;
+const rawApiKeys = process.env.GEMINI_API_KEY || process.env.API_KEY || process.env.VITE_API_KEY;
 
-if (!apiKey) {
+if (!rawApiKeys) {
     console.error("CRITICAL ERROR: No API Key found in .env or environment variables.");
-    console.error("Please set GEMINI_API_KEY in a .env file.");
     process.exit(1);
 }
 
-const genAI = new GoogleGenAI({ apiKey });
+const apiKeys = rawApiKeys.split(',').map(key => key.trim()).filter(key => key);
+const aiInstances = apiKeys.map(apiKey => new GoogleGenAI({ apiKey }));
+
+/**
+ * Attempts to generate content using a pool of AI instances, failing over to the next key on specific errors.
+ */
+async function generateContentWithFailover(params) {
+    let lastError = null;
+    for (let i = 0; i < aiInstances.length; i++) {
+        const ai = aiInstances[i];
+        try {
+            return await ai.models.generateContent(params);
+        } catch (error) {
+            lastError = error;
+            console.warn(`API key ${i + 1}/${aiInstances.length} failed: ${lastError.message}`);
+            const errorMessage = lastError.message.toLowerCase();
+            const isRetriable = 
+                errorMessage.includes('api key not valid') ||
+                errorMessage.includes('quota') ||
+                errorMessage.includes('internal error') ||
+                errorMessage.includes('500') || 
+                errorMessage.includes('503');
+            if (!isRetriable) throw lastError;
+        }
+    }
+    throw new Error(`All ${aiInstances.length} API keys failed. Last error: ${lastError?.message || 'Unknown error'}`);
+}
 
 // Shopify Config
 const SHOPIFY_DOMAIN = 'dermatics-in.myshopify.com';
@@ -162,7 +187,7 @@ app.post('/api/analyze-skin', async (req, res) => {
         
         Provide output in JSON format. Do NOT return empty arrays for boundingBoxes - every condition MUST have visible boxes.`;
 
-        const response = await genAI.models.generateContent({
+        const response = await generateContentWithFailover({
             model: 'gemini-2.5-flash',
             contents: { parts: [...imageParts, { text: prompt }] },
             config: {
@@ -278,7 +303,7 @@ app.post('/api/analyze-hair', async (req, res) => {
         
         Provide the output strictly in JSON format according to the provided schema.`;
 
-        const response = await genAI.models.generateContent({
+        const response = await generateContentWithFailover({
             model: 'gemini-2.5-flash',
             contents: { parts: [...imageParts, { text: prompt }] },
             config: {
@@ -364,7 +389,7 @@ app.post('/api/recommend-skin', async (req, res) => {
         Catalog: ${productCatalogString}
         Return JSON with am/pm routines. Use variantId as productId from catalog.`;
 
-        const response = await genAI.models.generateContent({
+        const response = await generateContentWithFailover({
             model: 'gemini-2.5-flash',
             contents: { parts: [{ text: prompt }] },
             config: {
@@ -386,14 +411,21 @@ app.post('/api/recommend-skin', async (req, res) => {
             return {
                 name: full.name,
                 price: full.price,
-                imageUrl: full.imageUrl,
+                image: full.imageUrl,
                 url: full.url,
                 variantId: full.variantId,
-                stepType: p.stepType
+                tags: [p.stepType]
             };
         }).filter(Boolean);
 
-        res.json({ am: hydrate(recommendations.am), pm: hydrate(recommendations.pm) });
+        const result = [];
+        if (recommendations.am?.length > 0) {
+            result.push({ category: "Morning Routine", products: hydrate(recommendations.am) });
+        }
+        if (recommendations.pm?.length > 0) {
+            result.push({ category: "Evening Routine", products: hydrate(recommendations.pm) });
+        }
+        res.json(result);
     } catch (error) {
         res.status(500).json({ error: error.message });
     }
@@ -420,7 +452,7 @@ app.post('/api/recommend-hair', async (req, res) => {
         Catalog: ${JSON.stringify(hairCatalog.map(p => ({ id: p.variantId, name: p.name })))}
         Return JSON with title, introduction, am/pm routines, lifestyleTips. Use variantId as productId from catalog.`;
 
-        const response = await genAI.models.generateContent({
+        const response = await generateContentWithFailover({
             model: 'gemini-2.5-flash',
             contents: { parts: [{ text: prompt }] },
             config: {
@@ -429,12 +461,19 @@ app.post('/api/recommend-hair', async (req, res) => {
                     type: SchemaType.OBJECT,
                     properties: {
                         title: { type: SchemaType.STRING },
-                        introduction: { type: SchemaType.STRING },
-                        am: { type: SchemaType.ARRAY, items: { type: SchemaType.OBJECT, properties: { productId: { type: SchemaType.STRING }, productName: { type: SchemaType.STRING } } } },
-                        pm: { type: SchemaType.ARRAY, items: { type: SchemaType.OBJECT, properties: { productId: { type: SchemaType.STRING }, productName: { type: SchemaType.STRING } } } },
-                        lifestyleTips: { type: SchemaType.ARRAY, items: { type: SchemaType.STRING } }
+                        recommendation: {
+                            type: SchemaType.OBJECT,
+                            properties: {
+                                introduction: { type: SchemaType.STRING },
+                                am: { type: SchemaType.ARRAY, items: { type: SchemaType.OBJECT, properties: { productId: { type: SchemaType.STRING }, productName: { type: SchemaType.STRING }, stepType: { type: SchemaType.STRING } } } },
+                                pm: { type: SchemaType.ARRAY, items: { type: SchemaType.OBJECT, properties: { productId: { type: SchemaType.STRING }, productName: { type: SchemaType.STRING }, stepType: { type: SchemaType.STRING } } } },
+                                lifestyleTips: { type: SchemaType.ARRAY, items: { type: SchemaType.STRING } },
+                                disclaimer: { type: SchemaType.STRING }
+                            },
+                            required: ["introduction", "am", "pm"]
+                        }
                     },
-                    required: ["title", "introduction", "am", "pm"]
+                    required: ["title", "recommendation"]
                 }
             }
         });
@@ -444,16 +483,22 @@ app.post('/api/recommend-hair', async (req, res) => {
             const full = hairCatalog.find(p => p.variantId === item.productId || p.name === item.productName);
             if (!full) return null;
             return {
+                stepType: item.stepType,
                 productName: full.name,
+                productUrl: full.url,
+                productImageUrl: full.imageUrl,
                 price: full.price,
-                imageUrl: full.imageUrl,
-                url: full.url,
                 variantId: full.variantId
             };
         }).filter(Boolean);
 
-        result.am = hydrate(result.am);
-        result.pm = hydrate(result.pm);
+        if (result.recommendation) {
+            result.recommendation.am = hydrate(result.recommendation.am);
+            result.recommendation.pm = hydrate(result.recommendation.pm);
+        } else {
+            result.am = hydrate(result.am);
+            result.pm = hydrate(result.pm);
+        }
         res.json(result);
     } catch (error) {
         res.status(500).json({ error: error.message });
@@ -478,7 +523,7 @@ app.post('/api/doctor-report', async (req, res) => {
         
         Keep it professional, empathetic, and clear. Format in Markdown.`;
 
-        const response = await genAI.models.generateContent({
+        const response = await generateContentWithFailover({
             model: 'gemini-2.5-flash',
             contents: { parts: [{ text: prompt }] }
         });
@@ -504,7 +549,7 @@ app.post('/api/chat', async (req, res) => {
         Provide a concise, helpful, and scientifically accurate answer based on the user's analysis and products. 
         If you don't know, suggest consulting a doctor.`;
 
-        const response = await genAI.models.generateContent({
+        const response = await generateContentWithFailover({
             model: 'gemini-2.5-flash',
             contents: { parts: [{ text: prompt }] }
         });
