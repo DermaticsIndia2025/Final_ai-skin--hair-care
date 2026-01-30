@@ -456,7 +456,7 @@ export const getSkincareRoutine = async (analysis: SkinConditionCategory[], goal
                 tags: ['Bestseller'],
                 image: p.imageUrl,
                 url: p.url,
-                id: p.id
+                variantId: p.variantId
             })) 
         }];
     }
