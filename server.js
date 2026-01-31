@@ -383,11 +383,24 @@ app.post('/api/recommend-skin', async (req, res) => {
         const goalsString = goals.join(', ');
         const productCatalogString = JSON.stringify(skincareCatalog.map(p => ({ id: p.variantId, name: p.name })));
 
-        const prompt = `Create a skincare routine for:
-        Analysis: ${analysisString}
-        Goals: ${goalsString}
-        Catalog: ${productCatalogString}
-        Return JSON with am/pm routines. Use variantId as productId from catalog.`;
+        const prompt = `Create a highly effective, personalized skincare routine (Morning & Evening) based on the user's specific analysis and goals.
+        
+        **INPUT DATA:**
+        - **USER ANALYSIS:** ${analysisString}
+        - **USER GOALS:** ${goalsString}
+        
+        **PRODUCT CATALOG:** 
+        ${productCatalogString}
+        
+        **MEDICAL LOGIC:**
+        1. AM Routine: Focus on Gentle Cleansing + Antioxidants + Hydration + Sun Protection.
+        2. PM Routine: Focus on Deep Cleansing + Treatments (Actives) + Repair/Moisturize.
+        3. Match the single best product for each step using only the catalog.
+        
+        **CONSTRAINTS:**
+        - Return the exact 'productId' (which is the variantId in the catalog).
+        - No hallucinations. If no product fits, skip that step.
+        - Return JSON format only.`;
 
         const response = await generateContentWithFailover({
             model: 'gemini-2.5-flash',
@@ -397,9 +410,32 @@ app.post('/api/recommend-skin', async (req, res) => {
                 responseSchema: {
                     type: SchemaType.OBJECT,
                     properties: {
-                        am: { type: SchemaType.ARRAY, items: { type: SchemaType.OBJECT, properties: { productId: { type: SchemaType.STRING }, name: { type: SchemaType.STRING }, stepType: { type: SchemaType.STRING } } } },
-                        pm: { type: SchemaType.ARRAY, items: { type: SchemaType.OBJECT, properties: { productId: { type: SchemaType.STRING }, name: { type: SchemaType.STRING }, stepType: { type: SchemaType.STRING } } } }
-                    }
+                        am: { 
+                            type: SchemaType.ARRAY, 
+                            items: { 
+                                type: SchemaType.OBJECT, 
+                                properties: { 
+                                    productId: { type: SchemaType.STRING }, 
+                                    name: { type: SchemaType.STRING }, 
+                                    stepType: { type: SchemaType.STRING } 
+                                },
+                                required: ["productId", "name", "stepType"]
+                            } 
+                        },
+                        pm: { 
+                            type: SchemaType.ARRAY, 
+                            items: { 
+                                type: SchemaType.OBJECT, 
+                                properties: { 
+                                    productId: { type: SchemaType.STRING }, 
+                                    name: { type: SchemaType.STRING }, 
+                                    stepType: { type: SchemaType.STRING } 
+                                },
+                                required: ["productId", "name", "stepType"]
+                            } 
+                        }
+                    },
+                    required: ["am", "pm"]
                 }
             }
         });
@@ -445,12 +481,23 @@ app.post('/api/recommend-hair', async (req, res) => {
             return ['hair', 'scalp', 'shampoo', 'conditioner', 'minoxidil', 'follihair', 'mintop', 'anaboom'].some(term => lowerName.includes(term));
         });
 
-        const prompt = `Create a hair care routine for:
-        Analysis: ${JSON.stringify(analysis)}
-        Profile: ${JSON.stringify(profile)}
-        Goals: ${goals.join(', ')}
-        Catalog: ${JSON.stringify(hairCatalog.map(p => ({ id: p.variantId, name: p.name })))}
-        Return JSON with am/pm routines. Use variantId as productId from catalog.`;
+        const prompt = `Create a clinical-grade hair care routine based on the provided analysis.
+        
+        **INPUT DATA:**
+        - **ANALYSIS:** ${JSON.stringify(analysis)}
+        - **PROFILE:** ${JSON.stringify(profile)}
+        - **GOALS:** ${goals.join(', ')}
+        
+        **PRODUCT CATALOG:** ${JSON.stringify(hairCatalog.map(p => ({ id: p.variantId, name: p.name })))}
+        
+        **MEDICAL LOGIC:**
+        1. Identify issues (e.g., Pattern Baldness, Dandruff, Damage).
+        2. Match the most potent product for each step using only the catalog.
+        
+        **CONSTRAINTS:**
+        - Return the exact 'productId' (which is the variantId in the catalog).
+        - No hallucinations. If no product fits, skip that step.
+        - Return JSON format only.`;
 
         const response = await generateContentWithFailover({
             model: 'gemini-2.5-flash',
@@ -460,9 +507,32 @@ app.post('/api/recommend-hair', async (req, res) => {
                 responseSchema: {
                     type: SchemaType.OBJECT,
                     properties: {
-                        am: { type: SchemaType.ARRAY, items: { type: SchemaType.OBJECT, properties: { productId: { type: SchemaType.STRING }, productName: { type: SchemaType.STRING }, stepType: { type: SchemaType.STRING } } } },
-                        pm: { type: SchemaType.ARRAY, items: { type: SchemaType.OBJECT, properties: { productId: { type: SchemaType.STRING }, productName: { type: SchemaType.STRING }, stepType: { type: SchemaType.STRING } } } }
-                    }
+                        am: { 
+                            type: SchemaType.ARRAY, 
+                            items: { 
+                                type: SchemaType.OBJECT, 
+                                properties: { 
+                                    productId: { type: SchemaType.STRING }, 
+                                    productName: { type: SchemaType.STRING }, 
+                                    stepType: { type: SchemaType.STRING } 
+                                },
+                                required: ["productId", "productName", "stepType"]
+                            } 
+                        },
+                        pm: { 
+                            type: SchemaType.ARRAY, 
+                            items: { 
+                                type: SchemaType.OBJECT, 
+                                properties: { 
+                                    productId: { type: SchemaType.STRING }, 
+                                    productName: { type: SchemaType.STRING }, 
+                                    stepType: { type: SchemaType.STRING } 
+                                },
+                                required: ["productId", "productName", "stepType"]
+                            } 
+                        }
+                    },
+                    required: ["am", "pm"]
                 }
             }
         });
