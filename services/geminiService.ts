@@ -562,47 +562,50 @@ export const getHairCareRoutine = async (
                 responseSchema: {
                     type: Type.OBJECT,
                     properties: {
-                        title: { type: Type.STRING },
-                        recommendation: {
-                            type: Type.OBJECT,
-                            properties: {
-                                introduction: { type: Type.STRING },
-                                am: { type: Type.ARRAY, items: productSchema },
-                                pm: { type: Type.ARRAY, items: productSchema },
-                                lifestyleTips: { type: Type.ARRAY, items: { type: Type.STRING } },
-                                disclaimer: { type: Type.STRING }
-                            },
-                            required: ["introduction", "am", "pm"]
-                        }
+                        am: { type: Type.ARRAY, items: productSchema },
+                        pm: { type: Type.ARRAY, items: productSchema }
                     },
-                    required: ["title", "recommendation"]
+                    required: ["am", "pm"]
                 }
             }
         });
         
-        const result = JSON.parse(response.text.trim());
+        const recommendations = JSON.parse(response.text.trim());
         
         // Helper to hydrate product data
-        const hydrateRoutine = (items: any[]) => {
-            return items.map(item => {
+        const hydrate = (items: any[]) => {
+            return items.map((item: any) => {
                 let fullProduct = hairCatalog.find(p => p.variantId === item.productId);
-                if (!fullProduct) fullProduct = hairCatalog.find(p => p.name === item.productName);
+                if (!fullProduct) fullProduct = hairCatalog.find(p => p.name === item.name || p.name === item.productName);
 
-                if (!fullProduct) return null; // Filter out if not found
+                if (!fullProduct) return null;
 
                 return {
-                    stepType: item.stepType,
-                    productName: fullProduct.name,
-                    productUrl: fullProduct.url,
-                    productImageUrl: fullProduct.imageUrl,
+                    name: fullProduct.name,
                     price: fullProduct.price,
+                    tags: [item.stepType],
+                    image: fullProduct.imageUrl,
+                    url: fullProduct.url,
                     variantId: fullProduct.variantId
                 };
-            }).filter(item => item !== null);
+            }).filter((item: any) => item !== null);
         };
 
-        result.recommendation.am = hydrateRoutine(result.recommendation.am);
-        result.recommendation.pm = hydrateRoutine(result.recommendation.pm);
+        const result: ProductRecommendation[] = [];
+
+        if (recommendations.am && recommendations.am.length > 0) {
+            result.push({
+                category: "Morning Routine",
+                products: hydrate(recommendations.am)
+            });
+        }
+
+        if (recommendations.pm && recommendations.pm.length > 0) {
+            result.push({
+                category: "Evening Routine",
+                products: hydrate(recommendations.pm)
+            });
+        }
 
         return result;
 

@@ -1040,43 +1040,7 @@ const App: React.FC = () => {
 
                  const hairRecs = await getHairCareRoutine(hairProfile, skinAnalysisResult || [], []);
                  setMessages(prev => prev.filter(msg => msg.type !== MessageType.Loading));
-                 
-                 const mappedRecs: ProductRecommendation[] = [];
-                 if (hairRecs.recommendation.am.length > 0) {
-                     mappedRecs.push({
-                         category: 'Morning Routine',
-                         products: hairRecs.recommendation.am.map(s => ({
-                             name: s.productName,
-                             price: s.price,
-                             tags: [s.stepType],
-                             image: s.productImageUrl,
-                             url: s.productUrl,
-                             id: s.productId,
-                             variantId: s.variantId
-                         }))
-                     });
-                 }
-                 if (hairRecs.recommendation.pm.length > 0) {
-                     mappedRecs.push({
-                         category: 'Evening Routine',
-                         products: hairRecs.recommendation.pm.map(s => ({
-                             name: s.productName,
-                             price: s.price,
-                             tags: [s.stepType],
-                             image: s.productImageUrl,
-                             url: s.productUrl,
-                             id: s.productId,
-                             variantId: s.variantId
-                         }))
-                     });
-                 }
-
-                 addMessage(Sender.Bot, MessageType.ProductRecommendation, mappedRecs);
-                 if (hairRecs.recommendation.lifestyleTips.length > 0) {
-                     setTimeout(() => {
-                        addMessage(Sender.Bot, MessageType.Text, "💡 **Lifestyle Tips:**\n" + hairRecs.recommendation.lifestyleTips.map(t => "- " + t).join("\n"));
-                     }, 1000);
-                 }
+                 addMessage(Sender.Bot, MessageType.ProductRecommendation, hairRecs);
                 break;
             case ConversationStep.Skin_Report:
                 addMessage(Sender.User, MessageType.Text, "AI Doctor's Report");

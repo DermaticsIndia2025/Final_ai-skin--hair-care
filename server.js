@@ -450,7 +450,7 @@ app.post('/api/recommend-hair', async (req, res) => {
         Profile: ${JSON.stringify(profile)}
         Goals: ${goals.join(', ')}
         Catalog: ${JSON.stringify(hairCatalog.map(p => ({ id: p.variantId, name: p.name })))}
-        Return JSON with title, introduction, am/pm routines, lifestyleTips. Use variantId as productId from catalog.`;
+        Return JSON with am/pm routines. Use variantId as productId from catalog.`;
 
         const response = await generateContentWithFailover({
             model: 'gemini-2.5-flash',
@@ -460,44 +460,33 @@ app.post('/api/recommend-hair', async (req, res) => {
                 responseSchema: {
                     type: SchemaType.OBJECT,
                     properties: {
-                        title: { type: SchemaType.STRING },
-                        recommendation: {
-                            type: SchemaType.OBJECT,
-                            properties: {
-                                introduction: { type: SchemaType.STRING },
-                                am: { type: SchemaType.ARRAY, items: { type: SchemaType.OBJECT, properties: { productId: { type: SchemaType.STRING }, productName: { type: SchemaType.STRING }, stepType: { type: SchemaType.STRING } } } },
-                                pm: { type: SchemaType.ARRAY, items: { type: SchemaType.OBJECT, properties: { productId: { type: SchemaType.STRING }, productName: { type: SchemaType.STRING }, stepType: { type: SchemaType.STRING } } } },
-                                lifestyleTips: { type: SchemaType.ARRAY, items: { type: SchemaType.STRING } },
-                                disclaimer: { type: SchemaType.STRING }
-                            },
-                            required: ["introduction", "am", "pm"]
-                        }
-                    },
-                    required: ["title", "recommendation"]
+                        am: { type: SchemaType.ARRAY, items: { type: SchemaType.OBJECT, properties: { productId: { type: SchemaType.STRING }, productName: { type: SchemaType.STRING }, stepType: { type: SchemaType.STRING } } } },
+                        pm: { type: SchemaType.ARRAY, items: { type: SchemaType.OBJECT, properties: { productId: { type: SchemaType.STRING }, productName: { type: SchemaType.STRING }, stepType: { type: SchemaType.STRING } } } }
+                    }
                 }
             }
         });
 
-        const result = JSON.parse(response.text.trim());
+        const recommendations = JSON.parse(response.text.trim());
         const hydrate = (list) => (list || []).map(item => {
             const full = hairCatalog.find(p => p.variantId === item.productId || p.name === item.productName);
             if (!full) return null;
             return {
-                stepType: item.stepType,
-                productName: full.name,
-                productUrl: full.url,
-                productImageUrl: full.imageUrl,
+                name: full.name,
                 price: full.price,
-                variantId: full.variantId
+                image: full.imageUrl,
+                url: full.url,
+                variantId: full.variantId,
+                tags: [item.stepType]
             };
         }).filter(Boolean);
 
-        if (result.recommendation) {
-            result.recommendation.am = hydrate(result.recommendation.am);
-            result.recommendation.pm = hydrate(result.recommendation.pm);
-        } else {
-            result.am = hydrate(result.am);
-            result.pm = hydrate(result.pm);
+        const result = [];
+        if (recommendations.am?.length > 0) {
+            result.push({ category: "Morning Routine", products: hydrate(recommendations.am) });
+        }
+        if (recommendations.pm?.length > 0) {
+            result.push({ category: "Evening Routine", products: hydrate(recommendations.pm) });
         }
         res.json(result);
     } catch (error) {
