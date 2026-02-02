@@ -678,7 +678,7 @@ app.use(express.static(path.join(__dirname, 'dist')));
 app.use('/reports', express.static(reportsDir));
 
 // Handle any other requests by serving index.html
-app.get('*', (req, res) => {
+app.get('*all', (req, res) => {
   res.sendFile(path.join(__dirname, 'dist', 'index.html'));
 });
 
