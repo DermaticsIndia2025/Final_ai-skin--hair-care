@@ -2,6 +2,7 @@ import express from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
 import path from 'path';
+import fs from 'fs';
 import { fileURLToPath } from 'url';
 import { GoogleGenAI } from '@google/genai';
 
@@ -587,7 +588,51 @@ app.post('/api/doctor-report', async (req, res) => {
             contents: { parts: [{ text: prompt }] }
         });
 
-        res.json({ report: response.text.trim() });
+        const reportText = response.text.trim();
+        const reportId = `report_${Date.now()}.html`;
+        const reportPath = path.join(reportsDir, reportId);
+
+        // Simple HTML template for the report
+        const htmlContent = `
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <title>Dermatics AI Report</title>
+            <style>
+                body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; padding: 40px; color: #333; line-height: 1.6; max-width: 800px; margin: 0 auto; }
+                h1 { color: #2c3e50; border-bottom: 2px solid #3498db; padding-bottom: 10px; }
+                .meta { color: #7f8c8d; margin-bottom: 30px; }
+                .content { background: white; }
+                pre { white-space: pre-wrap; word-wrap: break-word; font-family: inherit; }
+                .footer { margin-top: 50px; font-size: 0.8em; color: #95a5a6; text-align: center; border-top: 1px solid #eee; padding-top: 20px; }
+                @media print {
+                    body { padding: 0; }
+                    .no-print { display: none; }
+                }
+            </style>
+        </head>
+        <body>
+            <h1>Dermatics AI ${type.charAt(0).toUpperCase() + type.slice(1)} Analysis Report</h1>
+            <div class="meta">Generated on: ${new Date().toLocaleString()}</div>
+            <div class="content">
+                <pre>${reportText}</pre>
+            </div>
+            <div class="footer">
+                This is an AI-generated report for informational purposes only. 
+                Please consult with a qualified professional for medical advice.
+            </div>
+            <button class="no-print" onclick="window.print()" style="margin-top: 20px; padding: 10px 20px; background: #3498db; color: white; border: none; border-radius: 5px; cursor: pointer;">Download as PDF</button>
+        </body>
+        </html>
+        `;
+
+        fs.writeFileSync(reportPath, htmlContent);
+
+        const protocol = req.headers['x-forwarded-proto'] || req.protocol;
+        const host = req.get('host');
+        const reportUrl = `${protocol}://${host}/reports/${reportId}`;
+
+        res.json({ url: reportUrl });
     } catch (error) {
         res.status(500).json({ error: error.message });
     }
@@ -622,11 +667,18 @@ app.post('/api/chat', async (req, res) => {
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
+// Ensure reports directory exists
+const reportsDir = path.join(__dirname, 'public', 'reports');
+if (!fs.existsSync(reportsDir)) {
+    fs.mkdirSync(reportsDir, { recursive: true });
+}
+
 // Serve static files from the React build folder
 app.use(express.static(path.join(__dirname, 'dist')));
+app.use('/reports', express.static(reportsDir));
 
 // Handle any other requests by serving index.html
-app.get('*all', (req, res) => {
+app.get('*', (req, res) => {
   res.sendFile(path.join(__dirname, 'dist', 'index.html'));
 });
 
