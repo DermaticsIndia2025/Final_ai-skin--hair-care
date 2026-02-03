@@ -592,18 +592,20 @@ app.post('/api/doctor-report', async (req, res) => {
         const reportId = `report_${Date.now()}.html`;
         const reportPath = path.join(reportsDir, reportId);
 
-        // Simple HTML template for the report
+        // Professional HTML template that triggers print immediately
         const htmlContent = `
         <!DOCTYPE html>
         <html>
         <head>
             <title>Dermatics AI Report</title>
             <style>
-                body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; padding: 40px; color: #333; line-height: 1.6; max-width: 800px; margin: 0 auto; }
-                h1 { color: #2c3e50; border-bottom: 2px solid #3498db; padding-bottom: 10px; }
-                .meta { color: #7f8c8d; margin-bottom: 30px; }
-                .content { background: white; }
-                pre { white-space: pre-wrap; word-wrap: break-word; font-family: inherit; }
+                body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; padding: 40px; color: #333; line-height: 1.6; max-width: 800px; margin: 0 auto; background-color: white; }
+                .header { text-align: center; border-bottom: 2px solid #2563eb; padding-bottom: 20px; margin-bottom: 30px; }
+                h1 { color: #2563eb; margin: 0; }
+                .meta { color: #6b7280; font-size: 0.9em; margin-top: 10px; }
+                .section { margin-bottom: 30px; }
+                h2 { color: #1e40af; border-bottom: 1px solid #e5e7eb; padding-bottom: 5px; margin-top: 0; }
+                .content { white-space: pre-wrap; word-wrap: break-word; font-family: inherit; font-size: 15px; }
                 .footer { margin-top: 50px; font-size: 0.8em; color: #95a5a6; text-align: center; border-top: 1px solid #eee; padding-top: 20px; }
                 @media print {
                     body { padding: 0; }
@@ -612,16 +614,28 @@ app.post('/api/doctor-report', async (req, res) => {
             </style>
         </head>
         <body>
-            <h1>Dermatics AI ${type.charAt(0).toUpperCase() + type.slice(1)} Analysis Report</h1>
-            <div class="meta">Generated on: ${new Date().toLocaleString()}</div>
-            <div class="content">
-                <pre>${reportText}</pre>
+            <div class="header">
+                <h1>Dermatics AI ${type.charAt(0).toUpperCase() + type.slice(1)} Report</h1>
+                <div class="meta">Generated on: ${new Date().toLocaleString()}</div>
             </div>
+            
+            <div class="section">
+                <h2>Clinical Summary</h2>
+                <div class="content">${reportText}</div>
+            </div>
+
             <div class="footer">
-                This is an AI-generated report for informational purposes only. 
-                Please consult with a qualified professional for medical advice.
+                <p>This is an AI-generated report for informational purposes only. It does not replace a professional medical consultation.</p>
+                <p>&copy; ${new Date().getFullYear()} Dermatics India</p>
             </div>
-            <button class="no-print" onclick="window.print()" style="margin-top: 20px; padding: 10px 20px; background: #3498db; color: white; border: none; border-radius: 5px; cursor: pointer;">Download as PDF</button>
+
+            <script>
+                window.onload = function() {
+                    setTimeout(() => {
+                        window.print();
+                    }, 500);
+                }
+            </script>
         </body>
         </html>
         `;
