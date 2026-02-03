@@ -60,8 +60,8 @@ async function generateContentWithFailover(params) {
 }
 
 // Shopify Config
-const SHOPIFY_DOMAIN = 'dermatics-in.myshopify.com';
-const ACCESS_TOKEN = '8a3075ce39ed30c5d2f04ff9e1aa13ed';
+const SHOPIFY_DOMAIN = process.env.SHOPIFY_DOMAIN;
+const ACCESS_TOKEN = process.env.SHOPIFY_ACCESS_TOKEN;
 
 let cachedProducts = null;
 
