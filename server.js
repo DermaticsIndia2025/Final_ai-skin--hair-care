@@ -568,72 +568,112 @@ app.post('/api/recommend-hair', async (req, res) => {
 /**
  * Endpoint: /api/doctor-report
  * Method: POST
- * Body: { analysis: [], type: 'skin' | 'hair' }
+ * Body: { analysis: [], recommendations: [], type: 'skin' | 'hair' }
  */
 app.post('/api/doctor-report', async (req, res) => {
     try {
-        const { analysis, type } = req.body;
-        const prompt = `You are a senior dermatologist/trichologist. Based on this ${type} analysis: ${JSON.stringify(analysis)}, 
-        generate a professional medical report summary. 
-        Include:
-        1. Clinical Observations
-        2. Potential Root Causes
-        3. Professional Recommendations (Lifestyle & Care)
-        4. Disclaimer
+        const { analysis, recommendations, type } = req.body;
         
-        Keep it professional, empathetic, and clear. Format in Markdown.`;
+        // 1. Generate AI Summary
+        const prompt = `You are a senior dermatologist/trichologist. Based on this ${type} analysis: ${JSON.stringify(analysis)}, 
+        generate a professional medical report summary. Include Clinical Observations and Professional Recommendations. 
+        Format it neatly.`;
 
-        const response = await generateContentWithFailover({
+        const aiResponse = await generateContentWithFailover({
             model: 'gemini-2.5-flash',
             contents: { parts: [{ text: prompt }] }
         });
+        const summaryText = aiResponse.text.trim();
 
-        const reportText = response.text.trim();
+        // 2. Format Analysis HTML (like web)
+        const analysisHtml = (analysis || []).map(cat => `
+            <div style="margin-bottom: 20px;">
+                <h3 style="color: #374151; margin-bottom: 10px;">${cat.category}</h3>
+                <ul style="list-style: none; padding: 0;">
+                    ${cat.conditions.map(c => `
+                        <li style="padding: 8px 0; border-bottom: 1px solid #f3f4f6;">
+                            <strong>${c.name}</strong> (${Math.round(c.confidence)}%) - ${c.location}
+                        </li>
+                    `).join('')}
+                </ul>
+            </div>
+        `).join('') || '<p>No specific conditions detected.</p>';
+
+        // 3. Format Recommendations HTML (like web)
+        const recommendationsHtml = (recommendations || []).map(rec => `
+            <div style="margin-bottom: 30px;">
+                <h3 style="color: #1e40af; border-bottom: 2px solid #e5e7eb; padding-bottom: 5px;">${rec.category}</h3>
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
+                    ${rec.products.map(p => `
+                        <div style="border: 1px solid #e5e7eb; padding: 12px; border-radius: 8px; display: flex; gap: 12px; align-items: start; background: #fff;">
+                            <img src="${p.image}" style="width: 60px; height: 60px; object-fit: cover; border-radius: 6px;" />
+                            <div>
+                                <h4 style="margin: 0 0 4px 0; font-size: 13px;">${p.name}</h4>
+                                <p style="color: #4b5563; font-size: 12px; margin: 0 0 6px 0;">${p.price}</p>
+                                <div style="display: flex; flex-wrap: wrap; gap: 4px;">
+                                    ${(p.tags || []).map(t => `<span style="background: #eff6ff; color: #1d4ed8; padding: 1px 6px; border-radius: 10px; font-size: 9px; font-weight: 600;">${t}</span>`).join('')}
+                                </div>
+                            </div>
+                        </div>
+                    `).join('')}
+                </div>
+            </div>
+        `).join('') || '<p>No recommendations provided.</p>';
+
         const reportId = `report_${Date.now()}.html`;
         const reportPath = path.join(reportsDir, reportId);
 
-        // Professional HTML template that triggers print immediately
         const htmlContent = `
         <!DOCTYPE html>
         <html>
         <head>
             <title>Dermatics AI Report</title>
             <style>
-                body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; padding: 40px; color: #333; line-height: 1.6; max-width: 800px; margin: 0 auto; background-color: white; }
-                .header { text-align: center; border-bottom: 2px solid #2563eb; padding-bottom: 20px; margin-bottom: 30px; }
-                h1 { color: #2563eb; margin: 0; }
-                .meta { color: #6b7280; font-size: 0.9em; margin-top: 10px; }
-                .section { margin-bottom: 30px; }
-                h2 { color: #1e40af; border-bottom: 1px solid #e5e7eb; padding-bottom: 5px; margin-top: 0; }
-                .content { white-space: pre-wrap; word-wrap: break-word; font-family: inherit; font-size: 15px; }
-                .footer { margin-top: 50px; font-size: 0.8em; color: #95a5a6; text-align: center; border-top: 1px solid #eee; padding-top: 20px; }
+                body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; padding: 40px; color: #333; line-height: 1.5; max-width: 850px; margin: 0 auto; background: #f9fafb; }
+                .card { background: white; padding: 30px; border-radius: 12px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1); }
+                .header { text-align: center; border-bottom: 3px solid #2563eb; padding-bottom: 20px; margin-bottom: 30px; }
+                h1 { color: #2563eb; margin: 0; font-size: 28px; }
+                .meta { color: #6b7280; font-size: 14px; margin-top: 8px; }
+                h2 { color: #1e40af; font-size: 20px; margin-top: 0; border-bottom: 1px solid #eee; padding-bottom: 10px; }
+                .summary-box { background: #f0f7ff; padding: 20px; border-radius: 8px; margin-bottom: 30px; border-left: 4px solid #3b82f6; }
                 @media print {
-                    body { padding: 0; }
+                    body { padding: 0; background: white; }
+                    .card { box-shadow: none; padding: 0; }
                     .no-print { display: none; }
                 }
             </style>
         </head>
         <body>
-            <div class="header">
-                <h1>Dermatics AI ${type.charAt(0).toUpperCase() + type.slice(1)} Report</h1>
-                <div class="meta">Generated on: ${new Date().toLocaleString()}</div>
-            </div>
-            
-            <div class="section">
-                <h2>Clinical Summary</h2>
-                <div class="content">${reportText}</div>
-            </div>
+            <div class="card">
+                <div class="header">
+                    <h1>Dermatics AI ${type.charAt(0).toUpperCase() + type.slice(1)} Report</h1>
+                    <div class="meta">Date: ${new Date().toLocaleDateString()} | Time: ${new Date().toLocaleTimeString()}</div>
+                </div>
 
-            <div class="footer">
-                <p>This is an AI-generated report for informational purposes only. It does not replace a professional medical consultation.</p>
-                <p>&copy; ${new Date().getFullYear()} Dermatics India</p>
+                <div class="summary-box">
+                    <h2>Clinical Summary</h2>
+                    <div style="white-space: pre-wrap;">${summaryText}</div>
+                </div>
+
+                <div style="margin-bottom: 40px;">
+                    <h2>Analysis Results</h2>
+                    ${analysisHtml}
+                </div>
+
+                <div>
+                    <h2>Recommended Routine</h2>
+                    ${recommendationsHtml}
+                </div>
+
+                <div style="margin-top: 40px; text-align: center; font-size: 11px; color: #9ca3af; border-top: 1px solid #eee; padding-top: 20px;">
+                    <p>This report is generated by AI for informational purposes. Please consult a dermatologist for medical concerns.</p>
+                    <p>&copy; ${new Date().getFullYear()} Dermatics India</p>
+                </div>
             </div>
 
             <script>
                 window.onload = function() {
-                    setTimeout(() => {
-                        window.print();
-                    }, 500);
+                    setTimeout(() => { window.print(); }, 500);
                 }
             </script>
         </body>
@@ -644,9 +684,8 @@ app.post('/api/doctor-report', async (req, res) => {
 
         const protocol = req.headers['x-forwarded-proto'] || req.protocol;
         const host = req.get('host');
-        const reportUrl = `${protocol}://${host}/reports/${reportId}`;
+        res.json({ url: `${protocol}://${host}/reports/${reportId}` });
 
-        res.json({ url: reportUrl });
     } catch (error) {
         res.status(500).json({ error: error.message });
     }
