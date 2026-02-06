@@ -503,6 +503,7 @@ app.post('/api/recommend-hair', async (req, res) => {
         **MEDICAL LOGIC:**
         1. Identify issues (e.g., Pattern Baldness, Dandruff, Damage).
         2. Match the most potent product for each step using only the catalog.
+        3. MANDATORY: For each product, provide a short "reason" (max 10 words) explaining why it's recommended for this specific user.
         
         **CONSTRAINTS:**
         - Return the exact 'productId' (which is the variantId in the catalog).
@@ -524,9 +525,10 @@ app.post('/api/recommend-hair', async (req, res) => {
                                 properties: { 
                                     productId: { type: SchemaType.STRING }, 
                                     productName: { type: SchemaType.STRING }, 
-                                    stepType: { type: SchemaType.STRING } 
+                                    stepType: { type: SchemaType.STRING },
+                                    reason: { type: SchemaType.STRING }
                                 },
-                                required: ["productId", "productName", "stepType"]
+                                required: ["productId", "productName", "stepType", "reason"]
                             } 
                         },
                         pm: { 
@@ -536,9 +538,10 @@ app.post('/api/recommend-hair', async (req, res) => {
                                 properties: { 
                                     productId: { type: SchemaType.STRING }, 
                                     productName: { type: SchemaType.STRING }, 
-                                    stepType: { type: SchemaType.STRING } 
+                                    stepType: { type: SchemaType.STRING },
+                                    reason: { type: SchemaType.STRING }
                                 },
-                                required: ["productId", "productName", "stepType"]
+                                required: ["productId", "productName", "stepType", "reason"]
                             } 
                         }
                     },
@@ -557,7 +560,8 @@ app.post('/api/recommend-hair', async (req, res) => {
                 image: full.imageUrl,
                 url: full.url,
                 variantId: full.variantId,
-                tags: [item.stepType]
+                tags: [item.stepType],
+                reason: item.reason
             };
         }).filter(Boolean);
 
@@ -602,6 +606,7 @@ app.post('/api/doctor-report', async (req, res) => {
                     ${(cat.conditions || []).map(c => `
                         <li>
                             <strong>${c.name}</strong> (${Math.round(c.confidence)}%) - ${c.location}
+                            ${c.description ? `<p style="margin: 4px 0; font-size: 12px; color: #666;">${c.description}</p>` : ''}
                         </li>
                     `).join('')}
                 </ul>
@@ -619,6 +624,7 @@ app.post('/api/doctor-report', async (req, res) => {
                             <div class="product-details">
                                 <h4>${p.name}</h4>
                                 <p class="price">${p.price}</p>
+                                ${p.reason ? `<p style="margin: 4px 0 8px 0; font-size: 11px; color: #1d4ed8; font-style: italic;">Why: ${p.reason}</p>` : ''}
                                 <div class="tags">
                                     ${(p.tags || []).map(t => `<span class="tag">${t}</span>`).join('')}
                                 </div>

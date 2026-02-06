@@ -14,6 +14,7 @@ export const generatePDF = (analysis: SkinConditionCategory[] | null, recommenda
                 ${(cat.conditions || []).map(c => `
                     <li>
                         <strong>${c.name}</strong> (${Math.round(c.confidence)}%) - ${c.location}
+                        ${c.description ? `<p style="margin: 4px 0; font-size: 12px; color: #666;">${c.description}</p>` : ''}
                     </li>
                 `).join('')}
             </ul>
@@ -30,6 +31,7 @@ export const generatePDF = (analysis: SkinConditionCategory[] | null, recommenda
                         <div class="product-details">
                             <h4>${p.name}</h4>
                             <p class="price">${p.price}</p>
+                            ${p.reason ? `<p style="margin: 4px 0 8px 0; font-size: 11px; color: #1d4ed8; font-style: italic;">Why: ${p.reason}</p>` : ''}
                             <div class="tags">
                                 ${(p.tags || []).map(t => `<span class="tag">${t}</span>`).join('')}
                             </div>
