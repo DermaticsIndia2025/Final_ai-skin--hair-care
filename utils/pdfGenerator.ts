@@ -11,7 +11,7 @@ export const generatePDF = (analysis: SkinConditionCategory[] | null, recommenda
         <div class="category">
             <h3>${cat.category}</h3>
             <ul>
-                ${cat.conditions.map(c => `
+                ${(cat.conditions || []).map(c => `
                     <li>
                         <strong>${c.name}</strong> (${Math.round(c.confidence)}%) - ${c.location}
                     </li>
@@ -20,18 +20,18 @@ export const generatePDF = (analysis: SkinConditionCategory[] | null, recommenda
         </div>
     `).join('') : '<p>No analysis data available.</p>';
 
-    const recommendationsHtml = recommendations.map(rec => `
+    const recommendationsHtml = (recommendations || []).map(rec => `
         <div class="routine-section">
             <h3>${rec.category}</h3>
             <div class="products-grid">
-                ${rec.products.map(p => `
+                ${(rec.products || []).map(p => `
                     <div class="product">
                         <img src="${p.image}" alt="${p.name}" />
                         <div class="product-details">
                             <h4>${p.name}</h4>
                             <p class="price">${p.price}</p>
                             <div class="tags">
-                                ${p.tags.map(t => `<span class="tag">${t}</span>`).join('')}
+                                ${(p.tags || []).map(t => `<span class="tag">${t}</span>`).join('')}
                             </div>
                         </div>
                     </div>
