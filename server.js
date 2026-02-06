@@ -177,7 +177,8 @@ app.post('/api/analyze-skin', async (req, res) => {
         1. Create a descriptive name (e.g., "Acne Pustules", "Deep Forehead Wrinkles", "Dark Spots on Cheeks")
         2. Rate confidence 0-100 (how sure are you)
         3. Specify exact location (Forehead, Left Cheek, Right Cheek, Nose, Chin, Under Eyes, Temple, Jaw, etc.)
-        4. MANDATORY: Draw a bounding box around EVERY visible instance using normalized coordinates (0.0-1.0)
+        4. MANDATORY: A very short, one-sentence description of the problem.
+        5. MANDATORY: Draw a bounding box around EVERY visible instance using normalized coordinates (0.0-1.0)
            - x1, y1 = top-left corner
            - x2, y2 = bottom-right corner
            - Example: if acne is on left cheek, draw box around that area
@@ -207,6 +208,7 @@ app.post('/api/analyze-skin', async (req, res) => {
                                         name: { type: SchemaType.STRING },
                                         confidence: { type: SchemaType.NUMBER },
                                         location: { type: SchemaType.STRING },
+                                        description: { type: SchemaType.STRING },
                                         boundingBoxes: {
                                             type: SchemaType.ARRAY,
                                             items: {
@@ -223,7 +225,7 @@ app.post('/api/analyze-skin', async (req, res) => {
                                             }
                                         }
                                     },
-                                    required: ["name", "confidence", "location", "boundingBoxes"]
+                                    required: ["name", "confidence", "location", "description", "boundingBoxes"]
                                 }
                             }
                         },
@@ -296,7 +298,8 @@ app.post('/api/analyze-hair', async (req, res) => {
         1. **Name:** Use specific terms from the reference list above (e.g., "Androgenetic Alopecia (Stage 2)", "Severe Dandruff", "Receding Hairline").
         2. **Confidence:** 0-100 score.
         3. **Location:** Specific area (e.g., "Left Temple", "Crown", "Nape", "Part Line").
-        4. **Bounding Boxes:** 
+        4. **Description:** A very short, one-sentence description of the problem.
+        5. **Bounding Boxes:** 
            - **MANDATORY VISUALIZATION TASK:** If you detect any Hair Loss (including Receding Hairline, Thinning, or Alopecia), you **MUST** return a bounding box.
            - Draw the box around the entire receding area or bald spot.
            - Use normalized coordinates (0.0 - 1.0).
@@ -327,6 +330,7 @@ app.post('/api/analyze-hair', async (req, res) => {
                                                 name: { type: SchemaType.STRING, description: "Specific condition name." },
                                                 confidence: { type: SchemaType.NUMBER, description: "Confidence 0-100." },
                                                 location: { type: SchemaType.STRING, description: "Location on scalp/hair." },
+                                                description: { type: SchemaType.STRING, description: "One-sentence description of the problem." },
                                                 boundingBoxes: {
                                                     type: SchemaType.ARRAY,
                                                     items: {
@@ -343,7 +347,7 @@ app.post('/api/analyze-hair', async (req, res) => {
                                                     }
                                                 }
                                             },
-                                            required: ["name", "confidence", "location", "boundingBoxes"]
+                                            required: ["name", "confidence", "location", "description", "boundingBoxes"]
                                         }
                                     }
                                 },
@@ -352,7 +356,8 @@ app.post('/api/analyze-hair', async (req, res) => {
                         },
                         error: { type: SchemaType.STRING, nullable: true },
                         message: { type: SchemaType.STRING, nullable: true }
-                    }
+                    },
+                    required: ["analysis"]
                 }
             }
         });
@@ -397,6 +402,7 @@ app.post('/api/recommend-skin', async (req, res) => {
         1. AM Routine: Focus on Gentle Cleansing + Antioxidants + Hydration + Sun Protection.
         2. PM Routine: Focus on Deep Cleansing + Treatments (Actives) + Repair/Moisturize.
         3. Match the single best product for each step using only the catalog.
+        4. MANDATORY: For each product, provide a short "reason" (max 10 words) explaining why it's recommended for this specific user.
         
         **CONSTRAINTS:**
         - Return the exact 'productId' (which is the variantId in the catalog).
@@ -418,9 +424,10 @@ app.post('/api/recommend-skin', async (req, res) => {
                                 properties: { 
                                     productId: { type: SchemaType.STRING }, 
                                     name: { type: SchemaType.STRING }, 
-                                    stepType: { type: SchemaType.STRING } 
+                                    stepType: { type: SchemaType.STRING },
+                                    reason: { type: SchemaType.STRING }
                                 },
-                                required: ["productId", "name", "stepType"]
+                                required: ["productId", "name", "stepType", "reason"]
                             } 
                         },
                         pm: { 
@@ -430,9 +437,10 @@ app.post('/api/recommend-skin', async (req, res) => {
                                 properties: { 
                                     productId: { type: SchemaType.STRING }, 
                                     name: { type: SchemaType.STRING }, 
-                                    stepType: { type: SchemaType.STRING } 
+                                    stepType: { type: SchemaType.STRING },
+                                    reason: { type: SchemaType.STRING }
                                 },
-                                required: ["productId", "name", "stepType"]
+                                required: ["productId", "name", "stepType", "reason"]
                             } 
                         }
                     },
@@ -451,7 +459,8 @@ app.post('/api/recommend-skin', async (req, res) => {
                 image: full.imageUrl,
                 url: full.url,
                 variantId: full.variantId,
-                tags: [p.stepType]
+                tags: [p.stepType],
+                reason: p.reason
             };
         }).filter(Boolean);
 

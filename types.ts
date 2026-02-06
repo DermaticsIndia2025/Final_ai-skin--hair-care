@@ -84,6 +84,7 @@ export interface SkinCondition {
     name: string;
     confidence: number;
     location: string;
+    description?: string;
     boundingBoxes: BoundingBox[];
 }
 
@@ -107,6 +108,7 @@ export interface Product {
     tags: string[];
     image: string;
     url?: string;
+    reason?: string;
 }
 
 export interface ProductRecommendation {
