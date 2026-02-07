@@ -114,7 +114,8 @@ export const analyzeSkin = async (imagesBase64: string[]): Promise<SkinCondition
     1. Create a descriptive name (e.g., "Acne Pustules", "Deep Forehead Wrinkles", "Dark Spots on Cheeks")
     2. Rate confidence 0-100 (how sure are you)
     3. Specify exact location (Forehead, Left Cheek, Right Cheek, Nose, Chin, Under Eyes, Temple, Jaw, etc.)
-    4. MANDATORY: Draw a bounding box around EVERY visible instance using normalized coordinates (0.0-1.0)
+    4. MANDATORY: A very short, one-sentence description of the problem.
+    5. MANDATORY: Draw a bounding box around EVERY visible instance using normalized coordinates (0.0-1.0)
        - x1, y1 = top-left corner
        - x2, y2 = bottom-right corner
        - Example: if acne is on left cheek, draw box around that area

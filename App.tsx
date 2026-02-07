@@ -1549,7 +1549,7 @@ const App: React.FC = () => {
                              <button onClick={() => addMessage(Sender.Bot, MessageType.ChatInput, null)} className="w-full px-4 py-3 bg-purple-600 text-white font-bold rounded-lg hover:bg-purple-700 transition-colors text-base flex items-center justify-center gap-2">
                                 <BotIcon /> Chat with AI Expert
                              </button>
-                             <button onClick={() => generatePDF(skinAnalysisResult, recommendations)} className="w-full px-4 py-3 bg-blue-50 text-blue-700 font-bold rounded-lg border-2 border-blue-200 hover:bg-blue-100 transition-colors text-base flex items-center justify-center gap-2">
+                             <button onClick={() => generatePDF(skinAnalysisResult, recommendations, conversationState.goals, userInfo, uploadedImages[0]?.base64)} className="w-full px-4 py-3 bg-blue-50 text-blue-700 font-bold rounded-lg border-2 border-blue-200 hover:bg-blue-100 transition-colors text-base flex items-center justify-center gap-2">
                                 <DownloadIcon /> Download Report (PDF)
                              </button>
                              <button onClick={() => handleNextStep(ConversationStep.Skin_Report)} className="w-full px-4 py-3 bg-gray-100 text-gray-800 font-bold rounded-lg hover:bg-gray-200 transition-colors text-base">Next: AI Doctor's Report</button>
@@ -1579,25 +1579,21 @@ const App: React.FC = () => {
                     </div>
                 );
             case MessageType.DoctorReport:
+                 const recommendationsMsg = messages.find(m => m.type === MessageType.ProductRecommendation);
+                 const recs = recommendationsMsg ? recommendationsMsg.content as ProductRecommendation[] : [];
+                 
                  return (
                     <div className="p-4 space-y-4 text-center">
                         <p className="font-bold text-lg">
                             <span className="text-blue-700">Step 5:</span>
                             <span className="text-gray-800"> AI Doctor's Report</span>
                         </p>
-                        <p className="text-sm text-gray-600 px-4">View your personalized plan, curated by our AI based on your analysis.</p>
+                        <p className="text-sm text-gray-600 px-4">Here is a summary of your analysis and personalized plan.</p>
                         <button 
-                            onClick={() => {
-                                addMessage(Sender.User, MessageType.Text, "View Personalized Skincare Plan");
-                                setTimeout(() => addMessage(Sender.Bot, MessageType.Final, {
-                                    title: "Your Personalized Skincare Plan",
-                                    content: "This is where your detailed skincare plan, including morning and evening routines, product usage instructions, and lifestyle tips would be presented. For now, this is a placeholder. Thank you for using our service!"
-                                }), 500);
-                                setConversationState(s => ({ ...s, step: ConversationStep.Done }));
-                            }} 
-                            className="w-full max-w-xs mx-auto mt-2 px-4 py-3 bg-white text-green-600 font-bold rounded-lg border-2 border-green-500 hover:bg-green-50 transition-colors text-base"
+                            onClick={() => generatePDF(skinAnalysisResult, recs, conversationState.goals, userInfo, uploadedImages[0]?.base64)} 
+                            className="w-full max-w-xs mx-auto mt-2 px-4 py-3 bg-white text-green-600 font-bold rounded-lg border-2 border-green-500 hover:bg-green-50 transition-colors text-base flex items-center justify-center gap-2"
                         >
-                            View Personalized Skincare Plan
+                            <DownloadIcon /> Download Report (PDF)
                         </button>
                     </div>
                 );
