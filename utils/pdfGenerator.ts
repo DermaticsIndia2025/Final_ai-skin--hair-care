@@ -103,7 +103,7 @@ export const generatePDF = (
                     <h1>${reportTitle}</h1>
                     <div class="date">Report Generated on: ${new Date().toLocaleDateString()}</div>
                 </div>
-                ${userImage ? `<img src="${userImage}" class="user-image" />` : ''}
+                ${formattedUserImage ? `<img src="${formattedUserImage}" class="user-image" />` : ''}
             </div>
 
             <div class="section-box">

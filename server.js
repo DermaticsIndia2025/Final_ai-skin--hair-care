@@ -63,6 +63,10 @@ async function generateContentWithFailover(params) {
 const SHOPIFY_DOMAIN = process.env.SHOPIFY_DOMAIN;
 const ACCESS_TOKEN = process.env.SHOPIFY_ACCESS_TOKEN;
 
+if (!SHOPIFY_DOMAIN || !ACCESS_TOKEN) {
+    console.warn("WARNING: SHOPIFY_DOMAIN or SHOPIFY_ACCESS_TOKEN is missing in environment variables. Product catalog will not work.");
+}
+
 let cachedProducts = null;
 
 async function getAllProducts() {
