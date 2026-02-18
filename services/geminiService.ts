@@ -38,10 +38,10 @@ async function generateContentWithFailover(params: GenerateContentParameters): P
         } catch (error) {
             lastError = error as Error;
             console.warn(`API key ${i + 1}/${aiInstances.length} failed: ${lastError.message}`);
-            
+
             const errorMessage = lastError.message.toLowerCase();
             // Check for specific, retriable error messages
-            const isRetriable = 
+            const isRetriable =
                 errorMessage.includes('api key not valid') ||
                 errorMessage.includes('quota') ||
                 errorMessage.includes('internal error') ||
@@ -185,7 +185,7 @@ export const analyzeHair = async (imagesBase64: string[]): Promise<AnalysisRespo
     }));
 
     const textPart = {
-             text: `You are an expert AI trichologist. Your task is to analyze images of a person's hair and scalp in detail.
+        text: `You are an expert AI trichologist. Your task is to analyze images of a person's hair and scalp in detail.
 
 **Step 1: Image Validity Check**
 First, determine if the uploaded image(s) clearly show a human head, hair, or scalp. 
@@ -287,7 +287,7 @@ Provide the output strictly in JSON format according to the provided schema.
                 }
             }
         });
-        
+
         return JSON.parse(response.text.trim());
 
     } catch (error) {
@@ -297,16 +297,16 @@ Provide the output strictly in JSON format according to the provided schema.
 };
 
 export const getSkincareRoutine = async (analysis: SkinConditionCategory[], goals: string[]): Promise<ProductRecommendation[]> => {
-     // Fetch all products from Shopify
-     const allProducts = await getAllProducts();
+    // Fetch all products from Shopify
+    const allProducts = await getAllProducts();
 
-     // STRICT FILTERING: Exclude hair products from skincare routines
-     const skincareCatalog = allProducts.filter(p => {
+    // STRICT FILTERING: Exclude hair products from skincare routines
+    const skincareCatalog = allProducts.filter(p => {
         const lowerName = p.name.toLowerCase();
         // Remove known hair terms
-        if (lowerName.includes('shampoo') || 
-            lowerName.includes('conditioner') || 
-            lowerName.includes('scalp') || 
+        if (lowerName.includes('shampoo') ||
+            lowerName.includes('conditioner') ||
+            lowerName.includes('scalp') ||
             lowerName.includes('minoxidil') ||
             lowerName.includes('follihair') ||
             lowerName.includes('mintop') ||
@@ -316,26 +316,26 @@ export const getSkincareRoutine = async (analysis: SkinConditionCategory[], goal
             return false;
         }
         return true;
-     });
+    });
 
-     const analysisString = analysis.map(cat => 
+    const analysisString = analysis.map(cat =>
         `${cat.category}: ${cat.conditions.map(c => `${c.name} (${c.confidence}%)`).join(', ')}`
-     ).join('; ');
+    ).join('; ');
 
-     const goalsString = goals.join(', ');
-     
-     // CRITICAL: We pass the variantId so the AI can return it.
-     const productCatalogString = JSON.stringify(skincareCatalog.map(p => ({
+    const goalsString = goals.join(', ');
+
+    // CRITICAL: We pass the variantId so the AI can return it.
+    const productCatalogString = JSON.stringify(skincareCatalog.map(p => ({
         id: p.variantId,
         name: p.name,
         tags: p.suitableFor,
         productType: p.productType,
         price: p.price
-     })), null, 2);
+    })), null, 2);
 
-     const prompt = `
+    const prompt = `
         **ROLE:** Expert AI Dermatologist for "Dermatics India".
-        **TASK:** Create a highly effective, personalized skincare routine (Morning & Evening) based on the user's specific analysis and goals.
+        **TASK:** Create a highly effective, personalized skincare routine (Morning & Evening) based on the user's specific analysis and goals. For each step type (e.g., Cleanser, Serum), provide one "Recommended" product and one "Alternative" product if available.
         
         **INPUT DATA:**
         - **USER ANALYSIS (Conditions Detected):** ${analysisString || 'None provided'}
@@ -347,23 +347,20 @@ export const getSkincareRoutine = async (analysis: SkinConditionCategory[], goal
         **MEDICAL LOGIC & STRATEGY:**
         1. **Analyze Conditions:** Look at the detected conditions (e.g., Acne, Pigmentation, Wrinkles).
         2. **Identify Ingredients:** Determine which active ingredients are needed.
-           - Acne -> Salicylic Acid, Niacinamide, Benzoyl Peroxide.
-           - Pigmentation -> Vitamin C, Glycolic Acid, Alpha Arbutin, Kojic Acid.
-           - Aging -> Retinol, Peptides, Hyaluronic Acid.
-           - Dryness -> Ceramides, Hyaluronic Acid, Glycerin.
         3. **Design Two Routines:**
            - **AM Routine (Morning):** Focus on Gentle Cleansing + Antioxidants (e.g. Vit C) + Hydration + Sun Protection.
            - **PM Routine (Evening):** Focus on Deep Cleansing + Treatments (Actives like Retinol/Exfoliants) + Repair/Moisturize.
-        4. **Select Products:** Search the provided "PRODUCT CATALOG" and select the *single best* product for each step.
-           - **PRIORITIZE:** Products that explicitly mention the user's condition in their name or description.
-           - **MATCHING:** Ensure the product type (Cleanser, Serum, etc.) matches the step exactly.
-           - **BEST FIT:** If multiple products exist (e.g. multiple Vitamin C serums), choose the one that best targets the user's specific combination of concerns (e.g. Vitamin C + Hyaluronic Acid for Dry Skin with Spots).
-           - **AVOID:** Generic products if a targeted one is available.
+        4. **Select Products:** Search the provided "PRODUCT CATALOG" and select products for each step.
+        5. **Provide Usage Details:** For EACH product, suggest:
+           - **When:** (e.g., "Morning", "Night", "During bath")
+           - **How to Use:** (e.g., "Apply to wet face, massage for 30s, rinse")
+           - **Frequency:** (e.g., "Once daily", "Twice daily", "3-4 times per week")
+           - **Duration:** (e.g., "Ongoing", "8-12 weeks", "Until resolved")
         
         **CONSTRAINTS:**
         - **MANDATORY:** You MUST select products available in the catalog.
         - **MANDATORY:** For each product, you MUST return the exact 'productId' (which is the variantId in the catalog) from the catalog.
-        - **NO HALLUCINATIONS:** If the catalog does not have a suitable product for a specific step (e.g., no Vitamin C serum), skip that step. Do NOT invent "General Advice" or "Generic Serum".
+        - **NO HALLUCINATIONS:** If the catalog does not have a suitable product for a specific step (e.g., no Vitamin C serum), skip that step.
      `;
 
     try {
@@ -382,22 +379,32 @@ export const getSkincareRoutine = async (analysis: SkinConditionCategory[], goal
                                 properties: {
                                     stepType: { type: Type.STRING, description: "e.g. Cleanser, Serum, Moisturizer" },
                                     productId: { type: Type.STRING, description: "The exact variantId from the product catalog." },
-                                    name: { type: Type.STRING, description: "Name of the product" }
+                                    name: { type: Type.STRING, description: "Name of the product" },
+                                    recommendationType: { type: Type.STRING, enum: ["Recommended", "Alternative"] },
+                                    when: { type: Type.STRING },
+                                    howToUse: { type: Type.STRING },
+                                    frequency: { type: Type.STRING },
+                                    duration: { type: Type.STRING }
                                 },
-                                required: ["stepType", "productId", "name"]
+                                required: ["stepType", "productId", "name", "recommendationType", "when", "howToUse", "frequency", "duration"]
                             }
                         },
                         pm: {
-                             type: Type.ARRAY,
-                             items: {
-                                 type: Type.OBJECT,
-                                 properties: {
-                                     stepType: { type: Type.STRING, description: "e.g. Cleanser, Treatment, Moisturizer" },
-                                     productId: { type: Type.STRING, description: "The exact variantId from the product catalog." },
-                                     name: { type: Type.STRING, description: "Name of the product" }
-                                 },
-                                 required: ["stepType", "productId", "name"]
-                             }
+                            type: Type.ARRAY,
+                            items: {
+                                type: Type.OBJECT,
+                                properties: {
+                                    stepType: { type: Type.STRING, description: "e.g. Cleanser, Treatment, Moisturizer" },
+                                    productId: { type: Type.STRING, description: "The exact variantId from the product catalog." },
+                                    name: { type: Type.STRING, description: "Name of the product" },
+                                    recommendationType: { type: Type.STRING, enum: ["Recommended", "Alternative"] },
+                                    when: { type: Type.STRING },
+                                    howToUse: { type: Type.STRING },
+                                    frequency: { type: Type.STRING },
+                                    duration: { type: Type.STRING }
+                                },
+                                required: ["stepType", "productId", "name", "recommendationType", "when", "howToUse", "frequency", "duration"]
+                            }
                         }
                     },
                     required: ["am", "pm"]
@@ -406,7 +413,7 @@ export const getSkincareRoutine = async (analysis: SkinConditionCategory[], goal
         });
 
         const recommendations = JSON.parse(response.text.trim());
-        
+
         // Helper to hydrate products
         const hydrate = (list: any[]) => list.map((p: any) => {
             // Try finding by variantId first (most robust)
@@ -424,7 +431,12 @@ export const getSkincareRoutine = async (analysis: SkinConditionCategory[], goal
                 tags: Array.from(new Set([p.stepType, ...fullProduct.suitableFor.slice(0, 2)])),
                 image: fullProduct.imageUrl,
                 url: fullProduct.url,
-                variantId: fullProduct.variantId
+                variantId: fullProduct.variantId,
+                recommendationType: p.recommendationType,
+                when: p.when,
+                howToUse: p.howToUse,
+                frequency: p.frequency,
+                duration: p.duration
             };
         }).filter(p => p !== null);
 
@@ -443,32 +455,33 @@ export const getSkincareRoutine = async (analysis: SkinConditionCategory[], goal
                 products: hydrate(recommendations.pm)
             });
         }
-        
+
         return result;
 
     } catch (error) {
         console.error("Error generating skincare routine:", error);
         // Fallback to basic list if AI fails
-        return [{ 
-            category: 'Recommended Products', 
+        return [{
+            category: 'Recommended Products',
             products: allProducts.slice(0, 4).map(p => ({
                 name: p.name,
                 price: p.price,
                 tags: ['Bestseller'],
                 image: p.imageUrl,
                 url: p.url,
-                variantId: p.variantId
-            })) 
+                variantId: p.variantId,
+                recommendationType: 'Recommended' as const
+            }))
         }];
     }
 };
 
 export const getHairCareRoutine = async (
-    hairProfile: Partial<HairProfileData>, 
-    analysis: SkinConditionCategory[], 
+    hairProfile: Partial<HairProfileData>,
+    analysis: SkinConditionCategory[],
     goals: string[]
-): Promise<{recommendation: SkincareRoutine, title: string}> => {
-    
+): Promise<ProductRecommendation[]> => {
+
     // Fetch all products from Shopify
     const allProducts = await getAllProducts();
 
@@ -477,12 +490,12 @@ export const getHairCareRoutine = async (
     const hairCatalog = allProducts.filter(p => {
         const lowerName = p.name.toLowerCase();
         const lowerTags = p.suitableFor.join(' ').toLowerCase();
-        
+
         // Positive Match: Must be relevant to hair
-        const isHairRelated = 
-            lowerName.includes('hair') || 
-            lowerName.includes('scalp') || 
-            lowerName.includes('shampoo') || 
+        const isHairRelated =
+            lowerName.includes('hair') ||
+            lowerName.includes('scalp') ||
+            lowerName.includes('shampoo') ||
             lowerName.includes('conditioner') ||
             lowerName.includes('minoxidil') ||
             lowerName.includes('follihair') ||
@@ -492,12 +505,12 @@ export const getHairCareRoutine = async (
             lowerTags.includes('scalp');
 
         // Negative Match: Explicitly exclude face items even if they accidentally trigger a hair match (rare, but possible)
-        const isFaceRelated = 
+        const isFaceRelated =
             lowerName.includes('face wash') ||
             lowerName.includes('facial') ||
             lowerName.includes('body wash') ||
             lowerName.includes('soap') ||
-            lowerName.includes('sunscreen') || 
+            lowerName.includes('sunscreen') ||
             lowerName.includes('under eye') ||
             lowerName.includes('lip balm') ||
             (lowerName.includes('serum') && !isHairRelated) || // Exclude face serums unless they also say hair/scalp
@@ -506,7 +519,7 @@ export const getHairCareRoutine = async (
         return isHairRelated && !isFaceRelated;
     });
 
-    const analysisString = analysis.map(cat => 
+    const analysisString = analysis.map(cat =>
         `${cat.category}: ${cat.conditions.map(c => `${c.name} (${c.confidence}%)`).join(', ')}`
     ).join('; ');
 
@@ -516,11 +529,11 @@ export const getHairCareRoutine = async (
         name: p.name,
         tags: p.suitableFor,
         price: p.price
-     })), null, 2);
+    })), null, 2);
 
     const prompt = `
         **ROLE:** Expert AI Trichologist for "Dermatics India".
-        **TASK:** Create a clinical-grade hair care routine based on the provided analysis.
+        **TASK:** Create a clinical-grade hair care routine based on the provided analysis. For each step type (e.g., Shampoo, Serum, Treatment), provide one "Recommended" product and one "Alternative" product if available.
         
         **INPUT DATA:**
         - **ANALYSIS:** ${analysisString || 'None'}
@@ -536,11 +549,16 @@ export const getHairCareRoutine = async (
            - **Dandruff:** Look for Ketoconazole, Zinc Pyrithione (ZPTO), Piroctone Olamine, Salicylic Acid, Coal Tar.
            - **Damage/Frizz:** Look for Keratin, Argan Oil, Shea Butter, Silk Protein.
         3. **Match Products:** Scan the catalog names/tags for these ingredients.
-        4. **Select:** Pick the most potent product for each step.
+        4. **Select:** Pick products for each step.
+        5. **Provide Usage Details:** For EACH product, suggest:
+           - **When:** (e.g., "Morning", "Night", "During bath")
+           - **How to Use:** (e.g., "Apply to wet scalp, massage gently for 1–2 minutes, then rinse thoroughly")
+           - **Frequency:** (e.g., "3–4 times per week", "Once daily", "Twice daily")
+           - **Duration:** (e.g., "Ongoing", "12-16 weeks", "Until resolved")
         
         **CONSTRAINTS:**
         - **STRICT ID MATCHING:** You MUST return the exact 'productId' (which is the variantId in the catalog) from the provided catalog.
-        - **NO HALLUCINATIONS:** If no product exists for a specific concern (e.g., no Minoxidil available), omit that step. Do NOT invent products.
+        - **NO HALLUCINATIONS:** If no product exists for a specific concern (e.g., no Minoxidil available), omit that step.
         - **NO FACE PRODUCTS:** Do NOT recommend face washes or skin creams.
     `;
 
@@ -549,9 +567,14 @@ export const getHairCareRoutine = async (
         properties: {
             stepType: { type: Type.STRING },
             productId: { type: Type.STRING, description: "The exact variantId from the product catalog." },
-            productName: { type: Type.STRING }
+            productName: { type: Type.STRING },
+            recommendationType: { type: Type.STRING, enum: ["Recommended", "Alternative"] },
+            when: { type: Type.STRING },
+            howToUse: { type: Type.STRING },
+            frequency: { type: Type.STRING },
+            duration: { type: Type.STRING }
         },
-        required: ["stepType", "productName", "productId"]
+        required: ["stepType", "productName", "productId", "recommendationType", "when", "howToUse", "frequency", "duration"]
     };
 
     try {
@@ -570,9 +593,9 @@ export const getHairCareRoutine = async (
                 }
             }
         });
-        
+
         const recommendations = JSON.parse(response.text.trim());
-        
+
         // Helper to hydrate product data
         const hydrate = (items: any[]) => {
             return items.map((item: any) => {
@@ -587,7 +610,12 @@ export const getHairCareRoutine = async (
                     tags: [item.stepType],
                     image: fullProduct.imageUrl,
                     url: fullProduct.url,
-                    variantId: fullProduct.variantId
+                    variantId: fullProduct.variantId,
+                    recommendationType: item.recommendationType,
+                    when: item.when,
+                    howToUse: item.howToUse,
+                    frequency: item.frequency,
+                    duration: item.duration
                 };
             }).filter((item: any) => item !== null);
         };
@@ -628,7 +656,7 @@ export const chatWithAI = async (query: string, context: { analysis: any, recomm
     
     Please answer the user's question based on the provided context. Keep the answer concise and helpful.
     `;
-    
+
     try {
         const response = await generateContentWithFailover({
             model: 'gemini-2.5-flash',
@@ -640,4 +668,3 @@ export const chatWithAI = async (query: string, context: { analysis: any, recomm
         return "I'm sorry, I'm having trouble answering that right now.";
     }
 };
-
