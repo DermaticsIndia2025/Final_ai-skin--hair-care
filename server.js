@@ -459,12 +459,14 @@ app.post('/api/recommend-skin', async (req, res) => {
             if (!full) return null;
             return {
                 name: full.name,
+                productid: full.productId,
                 price: full.price,
+                compareAtPrice: full.compareAtPrice,
                 image: full.imageUrl,
                 url: full.url,
                 variantId: full.variantId,
-                tags: [p.stepType],
-                reason: p.reason
+                tags: [item.stepType],
+                reason: item.reason
             };
         }).filter(Boolean);
 
@@ -560,7 +562,9 @@ app.post('/api/recommend-hair', async (req, res) => {
             if (!full) return null;
             return {
                 name: full.name,
+                productid: full.productId,
                 price: full.price,
+                compareAtPrice: full.compareAtPrice,
                 image: full.imageUrl,
                 url: full.url,
                 variantId: full.variantId,
