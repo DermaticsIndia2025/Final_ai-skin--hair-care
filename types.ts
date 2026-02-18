@@ -12,11 +12,11 @@ export enum MessageType {
   NextStep = 'nextStep',
   Final = 'final',
   Loading = 'loading',
-  
+
   // Initial choice
   AssessmentOptions = 'assessmentOptions',
   UserInfo = 'userInfo',
-  
+
   // Skin Flow
   ProductOptions = 'productOptions',
   DurationOptions = 'durationOptions',
@@ -71,26 +71,26 @@ export interface Message {
 }
 
 export interface BoundingBox {
-    imageId: number;
-    box: {
-        x1: number;
-        y1: number;
-        x2: number;
-        y2: number;
-    };
+  imageId: number;
+  box: {
+    x1: number;
+    y1: number;
+    x2: number;
+    y2: number;
+  };
 }
 
 export interface SkinCondition {
-    name: string;
-    confidence: number;
-    location: string;
-    description?: string;
-    boundingBoxes: BoundingBox[];
+  name: string;
+  confidence: number;
+  location: string;
+  description?: string;
+  boundingBoxes: BoundingBox[];
 }
 
 export interface SkinConditionCategory {
-    category: string;
-    conditions: SkinCondition[];
+  category: string;
+  conditions: SkinCondition[];
 }
 
 export interface Goal {
@@ -101,19 +101,24 @@ export interface Goal {
 }
 
 export interface Product {
-    id?: string;
-    variantId?: string;
-    name: string;
-    price: string;
-    tags: string[];
-    image: string;
-    url?: string;
-    reason?: string;
+  id?: string;
+  variantId?: string;
+  name: string;
+  price: string;
+  tags: string[];
+  image: string;
+  url?: string;
+  recommendationType?: 'Recommended' | 'Alternative';
+  when?: string;
+  howToUse?: string;
+  frequency?: string;
+  duration?: string;
+  purpose?: string;
 }
 
 export interface ProductRecommendation {
-    category: string;
-    products: Product[];
+  category: string;
+  products: Product[];
 }
 
 export interface HairQuestion {
@@ -125,36 +130,36 @@ export interface HairQuestion {
 }
 
 export interface RoutineProduct {
-    stepType: string;
-    productId?: string;
-    variantId?: string;
-    productName: string;
-    productUrl?: string;
-    productImageUrl?: string;
-    purpose: string;
-    price?: string;
-    originalPrice?: string;
-    keyIngredients: string[];
-    alternatives?: { productName: string }[];
+  stepType: string;
+  productId?: string;
+  variantId?: string;
+  productName: string;
+  productUrl?: string;
+  productImageUrl?: string;
+  purpose: string;
+  price?: string;
+  originalPrice?: string;
+  keyIngredients: string[];
+  alternatives?: { productName: string }[];
 }
 
 export interface SkincareRoutine {
-    introduction?: string;
-    am: RoutineProduct[];
-    pm: RoutineProduct[];
-    keyIngredients?: string[];
-    lifestyleTips: string[];
-    disclaimer?: string;
+  introduction?: string;
+  am: RoutineProduct[];
+  pm: RoutineProduct[];
+  keyIngredients?: string[];
+  lifestyleTips: string[];
+  disclaimer?: string;
 }
 
 export interface HairProfileData {
-    gender: string;
-    [key: string]: any;
+  gender: string;
+  [key: string]: any;
 }
 
 export interface UserInfo {
-    name: string;
-    age: string;
-    phone: string;
-    email: string;
+  name: string;
+  age: string;
+  phone: string;
+  email: string;
 }
