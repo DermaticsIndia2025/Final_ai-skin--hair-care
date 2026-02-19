@@ -101,10 +101,12 @@ export interface Goal {
 }
 
 export interface Product {
-  id?: string;
+  id?: string; // Standard Shopify GraphQL ID
+  productId?: string; // Product ID (e.g. gid://shopify/Product/...)
   variantId?: string;
   name: string;
   price: string;
+  compareAtPrice?: string;
   tags: string[];
   image: string;
   url?: string;
@@ -138,7 +140,8 @@ export interface RoutineProduct {
   productImageUrl?: string;
   purpose: string;
   price?: string;
-  originalPrice?: string;
+  compareAtPrice?: string;
+  originalPrice?: string; // Legacy field, keeping for compatibility
   keyIngredients: string[];
   alternatives?: { productName: string }[];
 }
