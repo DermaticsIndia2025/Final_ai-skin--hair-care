@@ -1,3 +1,11 @@
+process.on('uncaughtException', (err) => {
+    console.error('UNCAUGHT EXCEPTION:', err);
+});
+
+process.on('unhandledRejection', (err) => {
+    console.error('UNHANDLED REJECTION:', err);
+});
+
 import express from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
@@ -47,11 +55,11 @@ async function generateContentWithFailover(params) {
             lastError = error;
             console.warn(`API key ${i + 1}/${aiInstances.length} failed: ${lastError.message}`);
             const errorMessage = lastError.message.toLowerCase();
-            const isRetriable = 
+            const isRetriable =
                 errorMessage.includes('api key not valid') ||
                 errorMessage.includes('quota') ||
                 errorMessage.includes('internal error') ||
-                errorMessage.includes('500') || 
+                errorMessage.includes('500') ||
                 errorMessage.includes('503');
             if (!isRetriable) throw lastError;
         }
@@ -85,7 +93,7 @@ async function getAllProducts() {
                   node {
                     id, title, description, productType, handle, onlineStoreUrl,
                     images(first: 1) { edges { node { url } } }
-                    variants(first: 1) { edges { node { id, price { amount, currencyCode } } } }
+                    variants(first: 1) { edges { node { id, price { amount, currencyCode }, compareAtPrice { amount, currencyCode } } } }
                     tags
                   }
                 }
@@ -110,13 +118,15 @@ async function getAllProducts() {
         cachedProducts = allEdges.map((edge) => {
             const node = edge.node;
             const price = node.variants.edges[0]?.node?.price;
+            const compareAtPrice = node.variants.edges[0]?.node?.compareAtPrice;
             return {
-                id: node.id,
+                productId: node.id,
                 name: node.title,
                 url: node.onlineStoreUrl || `https://${SHOPIFY_DOMAIN}/products/${node.handle}`,
                 imageUrl: node.images.edges[0]?.node?.url || 'https://placehold.co/200x200?text=No+Image',
                 variantId: node.variants.edges[0]?.node?.id,
                 price: price ? `${price.currencyCode} ${parseFloat(price.amount).toFixed(2)}` : 'N/A',
+                compareAtPrice: compareAtPrice ? `${compareAtPrice.currencyCode} ${parseFloat(compareAtPrice.amount).toFixed(2)}` : 'N/A',
                 tags: node.tags || []
             };
         });
@@ -383,14 +393,15 @@ app.post('/api/recommend-skin', async (req, res) => {
     try {
         const { analysis, goals } = req.body;
         const allProducts = await getAllProducts();
-        
+
         const skincareCatalog = allProducts.filter(p => {
             const lowerName = p.name.toLowerCase();
             return !['shampoo', 'conditioner', 'scalp', 'minoxidil', 'follihair', 'mintop', 'anaboom'].some(term => lowerName.includes(term));
         });
 
         const analysisString = JSON.stringify(analysis);
-        const goalsString = goals.join(', ');
+        // const goalsString = goals.join(', '); // old updated on 19-02-2026
+        const goalsString = (goals || []).join(", "); // new updated on 19-02-2026
         const productCatalogString = JSON.stringify(skincareCatalog.map(p => ({ id: p.variantId, name: p.name })));
 
         const prompt = `Create a highly effective, personalized skincare routine (Morning & Evening) based on the user's specific analysis and goals.
@@ -401,18 +412,19 @@ app.post('/api/recommend-skin', async (req, res) => {
         
         **PRODUCT CATALOG:** 
         ${productCatalogString}
-        
+
         **MEDICAL LOGIC:**
         1. AM Routine: Focus on Gentle Cleansing + Antioxidants + Hydration + Sun Protection.
         2. PM Routine: Focus on Deep Cleansing + Treatments (Actives) + Repair/Moisturize.
         3. Match the single best product for each step using only the catalog.
-        4. MANDATORY: For each product, provide a short "reason" (max 10 words) explaining why it's recommended for this specific user.
-        
+        4. For each step, you can recommend one "Recommended" product and optionally one "Alternative" product if suitable.
+        5. MANDATORY: For each product, provide a short "reason" (max 10 words) explaining why it's recommended for this specific user.
+
         **CONSTRAINTS:**
         - Return the exact 'productId' (which is the variantId in the catalog).
         - No hallucinations. If no product fits, skip that step.
+        - Set 'recommendationType' to either "Recommended" or "Alternative".
         - Return JSON format only.`;
-
         const response = await generateContentWithFailover({
             model: 'gemini-2.5-flash',
             contents: { parts: [{ text: prompt }] },
@@ -421,31 +433,33 @@ app.post('/api/recommend-skin', async (req, res) => {
                 responseSchema: {
                     type: SchemaType.OBJECT,
                     properties: {
-                        am: { 
-                            type: SchemaType.ARRAY, 
-                            items: { 
-                                type: SchemaType.OBJECT, 
-                                properties: { 
-                                    productId: { type: SchemaType.STRING }, 
-                                    name: { type: SchemaType.STRING }, 
+                        am: {
+                            type: SchemaType.ARRAY,
+                            items: {
+                                type: SchemaType.OBJECT,
+                                properties: {
+                                    productId: { type: SchemaType.STRING },
+                                    name: { type: SchemaType.STRING },
                                     stepType: { type: SchemaType.STRING },
-                                    reason: { type: SchemaType.STRING }
+                                    reason: { type: SchemaType.STRING },
+                                    recommendationType: { type: SchemaType.STRING }
                                 },
-                                required: ["productId", "name", "stepType", "reason"]
-                            } 
+                                required: ["productId", "name", "stepType", "reason", "recommendationType"]
+                            }
                         },
-                        pm: { 
-                            type: SchemaType.ARRAY, 
-                            items: { 
-                                type: SchemaType.OBJECT, 
-                                properties: { 
-                                    productId: { type: SchemaType.STRING }, 
-                                    name: { type: SchemaType.STRING }, 
+                        pm: {
+                            type: SchemaType.ARRAY,
+                            items: {
+                                type: SchemaType.OBJECT,
+                                properties: {
+                                    productId: { type: SchemaType.STRING },
+                                    name: { type: SchemaType.STRING },
                                     stepType: { type: SchemaType.STRING },
-                                    reason: { type: SchemaType.STRING }
+                                    reason: { type: SchemaType.STRING },
+                                    recommendationType: { type: SchemaType.STRING }
                                 },
-                                required: ["productId", "name", "stepType", "reason"]
-                            } 
+                                required: ["productId", "name", "stepType", "reason", "recommendationType"]
+                            }
                         }
                     },
                     required: ["am", "pm"]
@@ -459,17 +473,17 @@ app.post('/api/recommend-skin', async (req, res) => {
             if (!full) return null;
             return {
                 name: full.name,
-                productid: full.productId,
+                productId: full.productId,
                 price: full.price,
                 compareAtPrice: full.compareAtPrice,
                 image: full.imageUrl,
                 url: full.url,
                 variantId: full.variantId,
-                tags: [item.stepType],
-                reason: item.reason
+                recommendationType: p.recommendationType || 'Recommended',
+                tags: [p.stepType],
+                reason: p.reason
             };
         }).filter(Boolean);
-
         const result = [];
         if (recommendations.am?.length > 0) {
             result.push({ category: "Morning Routine", products: hydrate(recommendations.am) });
@@ -491,31 +505,34 @@ app.post('/api/recommend-hair', async (req, res) => {
     try {
         const { analysis, profile, goals } = req.body;
         const allProducts = await getAllProducts();
-        
+
         const hairCatalog = allProducts.filter(p => {
             const lowerName = p.name.toLowerCase();
-            return ['hair', 'scalp', 'shampoo', 'conditioner', 'minoxidil', 'follihair', 'mintop', 'anaboom'].some(term => lowerName.includes(term));
+            return ['hair', 'scalp', 'shampoo', 'conditioner', 'minoxidil', 'follihair', 'mintop', 'anaboom', 'oil', 'serum', 'tablet', 'capsule', 'solution'].some(term => lowerName.includes(term));
         });
 
+        console.log(`- INFO: hairCatalog size: ${hairCatalog.length} products`);
+
         const prompt = `Create a clinical-grade hair care routine based on the provided analysis.
-        
+
         **INPUT DATA:**
         - **ANALYSIS:** ${JSON.stringify(analysis)}
-        - **PROFILE:** ${JSON.stringify(profile)}
-        - **GOALS:** ${goals.join(', ')}
-        
+        - **PROFILE:** ${JSON.stringify(profile || {})}
+        - **GOALS:** ${(goals || []).join(', ')}
+
         **PRODUCT CATALOG:** ${JSON.stringify(hairCatalog.map(p => ({ id: p.variantId, name: p.name })))}
-        
+
         **MEDICAL LOGIC:**
         1. Identify issues (e.g., Pattern Baldness, Dandruff, Damage).
         2. Match the most potent product for each step using only the catalog.
-        3. MANDATORY: For each product, provide a short "reason" (max 10 words) explaining why it's recommended for this specific user.
-        
+        3. For each step, you can recommend one "Recommended" product and optionally one "Alternative" product if suitable.
+        4. MANDATORY: For each product, provide a short "reason" (max 10 words) explaining why it's recommended for this specific user.
+
         **CONSTRAINTS:**
         - Return the exact 'productId' (which is the variantId in the catalog).
         - No hallucinations. If no product fits, skip that step.
+        - Set 'recommendationType' to either "Recommended" or "Alternative".
         - Return JSON format only.`;
-
         const response = await generateContentWithFailover({
             model: 'gemini-2.5-flash',
             contents: { parts: [{ text: prompt }] },
@@ -524,31 +541,33 @@ app.post('/api/recommend-hair', async (req, res) => {
                 responseSchema: {
                     type: SchemaType.OBJECT,
                     properties: {
-                        am: { 
-                            type: SchemaType.ARRAY, 
-                            items: { 
-                                type: SchemaType.OBJECT, 
-                                properties: { 
-                                    productId: { type: SchemaType.STRING }, 
-                                    productName: { type: SchemaType.STRING }, 
+                        am: {
+                            type: SchemaType.ARRAY,
+                            items: {
+                                type: SchemaType.OBJECT,
+                                properties: {
+                                    productId: { type: SchemaType.STRING },
+                                    name: { type: SchemaType.STRING },
                                     stepType: { type: SchemaType.STRING },
-                                    reason: { type: SchemaType.STRING }
+                                    reason: { type: SchemaType.STRING },
+                                    recommendationType: { type: SchemaType.STRING }
                                 },
-                                required: ["productId", "productName", "stepType", "reason"]
-                            } 
+                                required: ["productId", "name", "stepType", "reason", "recommendationType"]
+                            }
                         },
-                        pm: { 
-                            type: SchemaType.ARRAY, 
-                            items: { 
-                                type: SchemaType.OBJECT, 
-                                properties: { 
-                                    productId: { type: SchemaType.STRING }, 
-                                    productName: { type: SchemaType.STRING }, 
+                        pm: {
+                            type: SchemaType.ARRAY,
+                            items: {
+                                type: SchemaType.OBJECT,
+                                properties: {
+                                    productId: { type: SchemaType.STRING },
+                                    name: { type: SchemaType.STRING },
                                     stepType: { type: SchemaType.STRING },
-                                    reason: { type: SchemaType.STRING }
+                                    reason: { type: SchemaType.STRING },
+                                    recommendationType: { type: SchemaType.STRING }
                                 },
-                                required: ["productId", "productName", "stepType", "reason"]
-                            } 
+                                required: ["productId", "name", "stepType", "reason", "recommendationType"]
+                            }
                         }
                     },
                     required: ["am", "pm"]
@@ -557,22 +576,24 @@ app.post('/api/recommend-hair', async (req, res) => {
         });
 
         const recommendations = JSON.parse(response.text.trim());
+        console.log("- INFO: AI hair response parsed successfully");
+
         const hydrate = (list) => (list || []).map(item => {
-            const full = hairCatalog.find(p => p.variantId === item.productId || p.name === item.productName);
+            const full = hairCatalog.find(p => p.variantId === item.productId || p.name === item.name);
             if (!full) return null;
             return {
                 name: full.name,
-                productid: full.productId,
+                productId: full.productId,
                 price: full.price,
                 compareAtPrice: full.compareAtPrice,
                 image: full.imageUrl,
                 url: full.url,
                 variantId: full.variantId,
+                recommendationType: item.recommendationType || 'Recommended',
                 tags: [item.stepType],
                 reason: item.reason
             };
         }).filter(Boolean);
-
         const result = [];
         if (recommendations.am?.length > 0) {
             result.push({ category: "Morning Routine", products: hydrate(recommendations.am) });
@@ -594,7 +615,7 @@ app.post('/api/recommend-hair', async (req, res) => {
 app.post('/api/doctor-report', async (req, res) => {
     try {
         const { analysis, recommendations, type } = req.body;
-        
+
         // 1. Generate AI Summary
         const prompt = `You are a senior dermatologist/trichologist. Based on this ${type} analysis: ${JSON.stringify(analysis)}, 
         generate a professional medical report summary. Include Clinical Observations and Professional Recommendations. 
@@ -746,9 +767,16 @@ app.use(express.static(path.join(__dirname, 'dist')));
 app.use('/reports', express.static(reportsDir));
 
 // Handle any other requests by serving index.html
-app.get('*all', (req, res) => {
-  res.sendFile(path.join(__dirname, 'dist', 'index.html'));
+
+// app.get('*all', (req, res) => { old updated on 19-02-2026
+// app.get('/*', (req, res) => {
+//     res.sendFile(path.join(__dirname, 'dist', 'index.html'));
+// });
+
+app.use((req, res) => {
+    res.sendFile(path.join(__dirname, 'dist', 'index.html'));
 });
+
 
 // Start Server
 app.listen(PORT, () => {
