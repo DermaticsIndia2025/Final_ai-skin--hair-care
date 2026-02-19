@@ -1215,11 +1215,52 @@ const App: React.FC = () => {
         }
     };
 
+    const FormattedText: React.FC<{ text: string }> = ({ text }) => {
+        const lines = text.split('\n');
+        return (
+            <div className="space-y-2">
+                {lines.map((line, i) => {
+                    // Handle headers (###)
+                    if (line.trim().startsWith('###')) {
+                        return <h3 key={i} className="text-md font-bold text-blue-700 mt-2">{line.replace('###', '').trim()}</h3>;
+                    }
+                    // Handle bullet points
+                    if (line.trim().startsWith('*') || line.trim().startsWith('-')) {
+                        const content = line.trim().substring(1).trim();
+                        return (
+                            <div key={i} className="flex gap-2 ml-2">
+                                <span className="text-blue-500">•</span>
+                                <span className="flex-1">{renderInline(content)}</span>
+                            </div>
+                        );
+                    }
+                    // Regular line
+                    return (
+                        <p key={i} className="leading-relaxed">
+                            {renderInline(line)}
+                        </p>
+                    );
+                })}
+            </div>
+        );
+    };
+
+    const renderInline = (content: string) => {
+        // Handle Bold (**text**)
+        const parts = content.split(/(\*\*.*?\*\*)/g);
+        return parts.map((part, i) => {
+            if (part.startsWith('**') && part.endsWith('**')) {
+                return <strong key={i} className="font-bold text-gray-900">{part.slice(2, -2)}</strong>;
+            }
+            return part;
+        });
+    };
+
     const MessageContent: React.FC<{ message: Message }> = ({ message }) => {
         switch (message.type) {
             case MessageType.Text:
                 if (typeof message.content === 'string') {
-                    return <p className="whitespace-pre-wrap">{message.content}</p>;
+                    return <FormattedText text={message.content} />;
                 }
                 return <div>{message.content}</div>;
             case MessageType.Loading: return <div className="flex items-center gap-2"><LoadingDots /> <p>{message.content}</p></div>;
@@ -1529,8 +1570,8 @@ const App: React.FC = () => {
                                             {/* Recommendation Tag */}
                                             {product.recommendationType && (
                                                 <div className={`absolute top-2 left-2 px-2 py-0.5 rounded-md text-[10px] font-bold uppercase tracking-wider z-10 shadow-sm ${product.recommendationType === 'Recommended'
-                                                        ? 'bg-blue-600 text-white border border-blue-400'
-                                                        : 'bg-indigo-50 text-indigo-600 border border-indigo-200'
+                                                    ? 'bg-blue-600 text-white border border-blue-400'
+                                                    : 'bg-indigo-50 text-indigo-600 border border-indigo-200'
                                                     }`}>
                                                     {product.recommendationType}
                                                 </div>
